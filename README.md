@@ -10,15 +10,15 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 
 ## Goals
 
-- **Lab 1: Architecture.** Block diagram design, role assignment, Git initialization, `.xdc` file preparation.
+✅ **Lab 1: Architecture.** Block diagram design, role assignment, Git initialization, `.xdc` file preparation.
 
-- **Lab 2: Unit Design.** Development of individual modules, testbench simulation, Git updates.
+ **Lab 2: Unit Design.** Development of individual modules, testbench simulation, Git updates.
 
-- **Lab 3: Integration.** Merging modules into the Top-level entity, synthesis, and initial HW testing, Git updates.
+ **Lab 3: Integration.** Merging modules into the Top-level entity, synthesis, and initial HW testing, Git updates.
 
-- **Lab 4: Tuning.** Debugging, code optimization, and Git documentation.
+ **Lab 4: Tuning.** Debugging, code optimization, and Git documentation.
 
-- **Lab 5: Defense.** Completion, video demonstration of the functional device, poster presentation, and code review.
+ **Lab 5: Defense.** Completion, video demonstration of the functional device, poster presentation, and code review.
 
 ## Project Objectives
 
@@ -39,5 +39,98 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 6. **Reliable and synthesizable design** ready for FPGA implementation.
 
 ## Diagram (work in progress)
+
+```mermaid
+
+flowchart LR
+
+%% ================= VSTUPY =================
+subgraph INPUTS [Vstupy]
+    CLK[clk100MHz]
+    BTNS[Buttons U,D,L,R]
+    BTN_C[btnC - Reset]
+end
+
+%% ================= CLOCK + RESET =================
+subgraph CLK_RST [System Control]
+    DIV[Clock Divider]
+    RST_SYNC[Reset Sync & Debounce]
+end
+
+CLK --> DIV
+BTN_C --> RST_SYNC
+
+%% ================= RIZENI SENZORU =================
+subgraph I2C_SUBSYSTEM [I2C Subsystem]
+    SENSOR_DRV[ADT7420 Driver]
+    I2C_MASTER[I2C Master]
+end
+
+RST_SYNC -->|global_reset| SENSOR_DRV
+DIV -->|i2c_clk| I2C_MASTER
+
+%% Logicky: Driver úkoluje Mastera, Master vrací data
+SENSOR_DRV <-->|cmd / data| I2C_MASTER
+SENSOR_DRV -->|temp_raw| TEMP_PROC
+
+%% ================= I2C SBERNICE =================
+subgraph I2C_BUS [I2C Physical]
+    SDA((SDA))
+    SCL((SCL))
+end
+
+I2C_MASTER <--> SDA
+I2C_MASTER --> SCL
+
+%% ================= ZPRACOVANI =================
+subgraph TEMP_BLOCK [Processing]
+    TEMP_PROC[Raw to Celsius]
+    UNIT_CONV[Unit Converter C/F]
+end
+
+TEMP_PROC --> UNIT_CONV
+
+%% ================= UI =================
+subgraph UI_BLOCK [User Interface]
+    DEB[Debouncer]
+    UI_CTRL[UI FSM]
+end
+
+BTNS --> DEB
+DEB --> UI_CTRL
+
+UI_CTRL -->|set_temp| CTRL
+UI_CTRL -->|unit_sel| UNIT_CONV
+UI_CTRL -->|disp_mode| DISP
+
+%% ================= RIZENI =================
+subgraph CTRL_BLOCK [Control Logic]
+    CTRL[Comparator + Hysteresis]
+end
+
+UNIT_CONV -->|current_temp| CTRL
+
+%% ================= DISPLAY =================
+subgraph DISP_BLOCK [7-Seg Driver]
+    DISP[Mux & Segment Decoder]
+end
+
+DIV -->|disp_clk| DISP
+UNIT_CONV -->|val_to_disp| DISP
+
+%% ================= VYSTUPY =================
+subgraph OUTPUTS [Výstupy]
+    HEAT[heat_out / LED0]
+    COOL[cool_out / LED1]
+    SEG[7-Segments]
+    AN[Anodes]
+end
+
+CTRL -->|heat_en| HEAT
+CTRL -->|cool_en| COOL
+DISP --> SEG
+DISP --> AN
+
+```
 
 ![block diagram](block_diagram_v1.png)
