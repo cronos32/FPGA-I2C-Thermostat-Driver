@@ -37,3 +37,7 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
     - Control logic for thermostat operation.
     - 7-segment display driver with multiplexing.
 6. **Reliable and synthesizable design** ready for FPGA implementation.
+
+## Diagram (work in progress)
+
+![block diagram](block_diagram_v1.png)
