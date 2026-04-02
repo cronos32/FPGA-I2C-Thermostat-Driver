@@ -1,12 +1,12 @@
 # FPGA I2C Thermostat Driver
 
-This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** FPGA board. It reads temperature via the onboard **ADT7420** I²C sensor, displays it on 7-segment displays, and allows user interaction via buttons. The system controls heating and cooling outputs based on user-defined temperature setpoints, usin LED to indicate wheter the cooling or heating is persued. Written in VHDL using experience gained in bachelor-level courses at **Brno University of Technology**.
+This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** FPGA board. It reads temperature from the onboard **ADT7420** I²C sensor, displays it on 7-segment displays, and allows user interaction via push-buttons. The system controls heating and cooling outputs based on user-defined temperature setpoints, using LEDs to indicate whether heating or cooling is active. The design is written in VHDL, leveraging experience gained in bachelor-level courses at **Brno University of Technology**.
 
 ## Team members
 
 - Lukáš Gajdík
 - Zuzana Hubáčková
-- Kubík Oselka
+- Jakub Oselka
 
 ## Goals
 
