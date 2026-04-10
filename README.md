@@ -39,20 +39,20 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 6. **Reliable and synthesizable design** ready for FPGA implementation.
 
 ## Inputs and Outputs
-| Port name | Direction | Type                         | Description                                      |
-|-----------|:---------:|------------------------------|--------------------------------------------------|
-| `clk`     |    in     | `std_logic`                  | System clock signal                              |
-| `btnu`    |    in     | `std_logic`                  | Increment button (increase value)                |
-| `btnd`    |    in     | `std_logic`                  | Decrement button (decrease value)                |
-| `btnc`    |    in     | `std_logic`                  | Reset button (center button)                     |
-| `led16_r` |   out     | `std_logic`                  | Heating indicator (red LED)                      |
-| `led16_b` |   out     | `std_logic`                  | Cooling indicator (blue LED)                     |
-| `led16_g` |   out     | `std_logic`                  | System ready indicator (green LED)               |
+| Port name | Direction | Type                           | Description                                        |
+|:---------:|:---------:|:-------------------------------|:---------------------------------------------------|
+| `clk`     |    in     | `std_logic`                    | System clock signal                                |
+| `btnu`    |    in     | `std_logic`                    | Increment button (increase value)                  |
+| `btnd`    |    in     | `std_logic`                    | Decrement button (decrease value)                  |
+| `btnc`    |    in     | `std_logic`                    | Reset button (center button)                       |
+| `led16_r` |   out     | `std_logic`                    | Heating indicator (red LED)                        |
+| `led16_b` |   out     | `std_logic`                    | Cooling indicator (blue LED)                       |
+| `led16_g` |   out     | `std_logic`                    | System ready indicator (green LED)                 |
 | `seg`     |   out     | `std_logic_vector(6 downto 0)` | Seven-segment display cathodes (CA–CG, active-low) |
-| `dp`      |   out     | `std_logic`                  | Decimal point (active-low)                       |
+| `dp`      |   out     | `std_logic`                    | Decimal point (active-low)                         |
 | `anode`   |   out     | `std_logic_vector(7 downto 0)` | Seven-segment display anodes (AN7–AN0, active-low) |
-| `TMP_SDA` |  inout    | `std_logic`                  | I²C serial data line                             |
-| `TMP_SCL` |   out     | `std_logic`                  | I²C serial clock line                            |
+| `TMP_SDA` |  inout    | `std_logic`                    | I²C serial data line                               |
+| `TMP_SCL` |   out     | `std_logic`                    | I²C serial clock line                              |
 
 ## Diagram (work in progress)
 
