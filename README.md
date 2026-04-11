@@ -58,95 +58,81 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 
 ```mermaid
 
-flowchart LR
+flowchart TD
 
-%% ================= VSTUPY =================
-subgraph INPUTS [Vstupy]
-    CLK[clk100MHz]
-    BTNS[Buttons U,D,L,R]
-    BTN_C[btnC - Reset]
-end
+    %% ── External I/O ──────────────────────────────────────────────
+    CLK([clk\n50 MHz])
+    BTNC([btnc\nreset])
+    BTNU([btnu\nbtn_up])
+    BTND([btnd\nbtn_down])
+    SW([sw\nC / F])
+    I2C_BUS([ADT7420 sensor\nSDA / SCL])
 
-%% ================= CLOCK + RESET =================
-subgraph CLK_RST [System Control]
-    DIV[Clock Divider]
-    RST_SYNC[Reset Sync & Debounce]
-end
+    SEG([7-seg display\nseg / an / dp])
+    LED([RGB LED\nled16 r/g/b])
+    HEAT([heat_en])
+    COOL([cool_en])
 
-CLK --> DIV
-BTN_C --> RST_SYNC
+    %% ── Modules ───────────────────────────────────────────────────
+    TOP["thermostat_top\n─────────────\nce_counter → ce_tick\nint clamp register"]
 
-%% ================= RIZENI SENZORU =================
-subgraph I2C_SUBSYSTEM [I2C Subsystem]
-    SENSOR_DRV[ADT7420 Driver]
-    I2C_MASTER[I2C Master]
-end
+    UI["TermostatLowLevel\nui_fsm\n─────────────────\nlatch capture process\ntemp_reg FSM\n\nout: teplota_out 12b"]
 
-RST_SYNC -->|global_reset| SENSOR_DRV
-DIV -->|i2c_clk| I2C_MASTER
+    SENS["adt7420_driver\n───────────────\nWAIT_1S → SET_REG\n→ READ_MSB/LSB → CALC\n\nconcurrent multiply\nout: temp_10x int"]
 
-%% Logicky: Driver úkoluje Mastera, Master vrací data
-SENSOR_DRV <-->|cmd / data| I2C_MASTER
-SENSOR_DRV -->|temp_raw| TEMP_PROC
+    I2C["i2c_master\n──────────\nquarter-period FSM\nIDLE→START→SEND_BITS\n→ACK→READ→STOP\n\nopen-drain OE control"]
 
-%% ================= I2C SBERNICE =================
-subgraph I2C_BUS [I2C Physical]
-    SDA((SDA))
-    SCL((SCL))
-end
+    COMB["display_data_combiner\n─────────────────────\nconcurrent BCD decode\nclamp ≤ 999\nout: data_out 32b"]
 
-I2C_MASTER <--> SDA
-I2C_MASTER --> SCL
+    REG["temp_regulator\n──────────────\nhysteresis ±0.5°C\ncombinational"]
 
-%% ================= ZPRACOVANI =================
-subgraph TEMP_BLOCK [Processing]
-    TEMP_PROC[Raw to Celsius]
-    UNIT_CONV[Unit Converter C/F]
-end
+    DISP["display_driver\n──────────────\n7-seg multiplex"]
 
-TEMP_PROC --> UNIT_CONV
+    %% ── Clock & Reset ─────────────────────────────────────────────
+    CLK  --> TOP
+    CLK  --> UI
+    CLK  --> SENS
+    CLK  --> I2C
+    CLK  --> DISP
+    BTNC -->|reset| TOP
+    BTNC -->|reset| SENS
+    BTNC -->|reset| I2C
+    BTNC -->|rst| DISP
 
-%% ================= UI =================
-subgraph UI_BLOCK [User Interface]
-    DEB[Debouncer]
-    UI_CTRL[UI FSM]
-end
+    %% ── Button inputs ─────────────────────────────────────────────
+    BTNU -->|btn_up| UI
+    BTND -->|btn_down| UI
+    TOP  -->|ce_tick ~10Hz| UI
 
-BTNS --> DEB
-DEB --> UI_CTRL
+    %% ── Set temperature path ──────────────────────────────────────
+    UI   -->|teplota_out 12b SLV| TOP
+    TOP  -->|set_temp unsigned 12b| COMB
+    TOP  -->|set_temp unsigned 12b| REG
 
-UI_CTRL -->|set_temp| CTRL
-UI_CTRL -->|unit_sel| UNIT_CONV
-UI_CTRL -->|disp_mode| DISP
+    %% ── Sensor path ───────────────────────────────────────────────
+    SENS -->|temp_10x int| TOP
+    TOP  -->|current_temp unsigned 12b| COMB
+    TOP  -->|current_temp unsigned 12b| REG
+    SENS <-->|SCL / SDA| I2C
+    I2C  <-->|TMP_SCL / TMP_SDA| I2C_BUS
 
-%% ================= RIZENI =================
-subgraph CTRL_BLOCK [Control Logic]
-    CTRL[Comparator + Hysteresis]
-end
+    %% ── Display path ──────────────────────────────────────────────
+    SW   -->|sw_unit| COMB
+    COMB -->|data_out 32b| DISP
+    DISP -->|seg 7b / an 8b / dp| SEG
 
-UNIT_CONV -->|current_temp| CTRL
+    %% ── Regulator outputs ─────────────────────────────────────────
+    REG  -->|led_red / blue / green| LED
+    REG  -->|heat_en| HEAT
+    REG  -->|cool_en| COOL
 
-%% ================= DISPLAY =================
-subgraph DISP_BLOCK [7-Seg Driver]
-    DISP[Mux & Segment Decoder]
-end
+    %% ── Styles ────────────────────────────────────────────────────
+    classDef io      fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    classDef module  fill:#EAF3DE,stroke:#3B6D11,color:#27500A
+    classDef top     fill:#EEEDFE,stroke:#534AB7,color:#3C3489
 
-DIV -->|disp_clk| DISP
-UNIT_CONV -->|val_to_disp| DISP
-
-%% ================= VYSTUPY =================
-subgraph OUTPUTS [Výstupy]
-    HEAT[heat_out / LED0]
-    COOL[cool_out / LED1]
-    SEG[7-Segments]
-    AN[Anodes]
-end
-
-CTRL -->|heat_en| HEAT
-CTRL -->|cool_en| COOL
-DISP --> SEG
-DISP --> AN
+    class CLK,BTNC,BTNU,BTND,SW,I2C_BUS,SEG,LED,HEAT,COOL io
+    class UI,SENS,I2C,COMB,REG,DISP module
+    class TOP top
 
 ```
-
-![block diagram](block_diagram_v1.png)
