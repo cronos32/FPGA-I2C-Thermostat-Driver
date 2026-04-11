@@ -5,7 +5,7 @@ use IEEE.NUMERIC_STD.ALL;
 entity adt7420_driver is
     port (
         clk, rst   : in std_logic;
-        temp_10x   : out integer; -- Např. 225 pro 22.5°C
+        temp_10x   : out integer; -- 225 for 22.5°C
         scl, sda   : inout std_logic
     );
 end entity;
