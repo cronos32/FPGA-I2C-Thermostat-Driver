@@ -4,8 +4,8 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity TermostatLowLevel is
     Port (
-        clk      : in  STD_LOGIC;      -- Hlavní hodiny (rychlé)
-        ce       : in  STD_LOGIC;      -- Clock Enable (pomalý tick z děličky)
+        clk      : in  STD_LOGIC;      -- Hlavní hodiny
+        ce       : in  STD_LOGIC;      -- Clock Enable 
         reset    : in  STD_LOGIC;
         btn_up   : in  STD_LOGIC;      -- Signál z debounceru
         btn_down : in  STD_LOGIC;
@@ -14,7 +14,7 @@ entity TermostatLowLevel is
 end TermostatLowLevel;
 
 architecture Behavioral of TermostatLowLevel is
-    -- Stavové registry (naše "latche")
+    -- Stavové registry
     signal up_latched   : std_logic := '0';
     signal down_latched : std_logic := '0';
     
@@ -22,7 +22,6 @@ architecture Behavioral of TermostatLowLevel is
 begin
 
     -- 1. ČÁST: Záchyt signálu (Set/Reset logika)
-    -- Tento proces běží na plné rychlosti clk a "chytá" stisky
     process(clk)
     begin
         if rising_edge(clk) then
@@ -40,7 +39,6 @@ begin
                 end if;
 
                 -- Pokud proběhl výpočet v pomalém cyklu (ce='1'), latch shodíme
-                -- Tím zajistíme, že jeden stisk = jedna akce
                 if ce = '1' then
                     up_latched <= '0';
                     down_latched <= '0';
@@ -49,8 +47,7 @@ begin
         end if;
     end process;
 
-    -- 2. ČÁST: Výpočetní logika (pomalá)
-    -- Tato část reaguje jen na "nahozené" latche v rytmu ce
+    -- 2. ČÁST: Výpočetní logika 
     process(clk)
     begin
         if rising_edge(clk) then

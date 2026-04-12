@@ -1,43 +1,68 @@
-----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date: 04/02/2026 05:39:56 PM
--- Design Name: 
--- Module Name: i2c_master - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
-----------------------------------------------------------------------------------
-
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx leaf cells in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
+use IEEE.NUMERIC_STD.ALL;
 
 entity i2c_master is
---  Port ( );
-end i2c_master;
+    generic ( CLK_DIV : integer := 250 ); -- 50MHz -> 100kHz
+    port (
+        clk, rst   : in    std_logic;
+        addr       : in    std_logic_vector(6 downto 0);
+        rw         : in    std_logic;
+        data_in    : in    std_logic_vector(7 downto 0);
+        data_out   : out   std_logic_vector(7 downto 0);
+        start      : in    std_logic;
+        stop_on_done : in  std_logic; -- '1' pošle STOP, '0' nechá běžet (pro ACK)
+        busy, nack : out   std_logic;
+        scl, sda   : inout std_logic
+    );
+end entity;
 
-architecture Behavioral of i2c_master is
-
+architecture rtl of i2c_master is
+    type state_t is (IDLE, STRT, BITS, ACK_WAIT, MSTR_ACK, STP);
+    signal state : state_t := IDLE;
+    signal count : integer range 0 to CLK_DIV := 0;
+    signal i2c_clk, scl_en, sda_out : std_logic := '1';
+    signal bit_idx : integer range 0 to 7 := 7;
+    signal shift_reg : std_logic_vector(7 downto 0);
 begin
+    -- Hodiny
+    process(clk) begin
+        if rising_edge(clk) then
+            if count = CLK_DIV then count <= 0; i2c_clk <= not i2c_clk;
+            else count <= count + 1; end if;
+        end if;
+    end process;
 
-
-end Behavioral;
+    process(clk) begin
+        if rising_edge(clk) then
+            if rst = '1' then state <= IDLE; sda_out <= '1'; scl_en <= '0';
+            elsif i2c_clk = '1' and count = 0 then
+                case state is
+                    when IDLE =>
+                        busy <= '0';
+                        if start = '1' then 
+                            state <= STRT; busy <= '1'; 
+                            shift_reg <= addr & rw;
+                        end if;
+                    when STRT => sda_out <= '0'; scl_en <= '1'; state <= BITS; bit_idx <= 7;
+                    when BITS =>
+                        sda_out <= shift_reg(bit_idx);
+                        if bit_idx = 0 then state <= ACK_WAIT; else bit_idx <= bit_idx - 1; end if;
+                    when ACK_WAIT =>
+                        sda_out <= '1'; 
+                        nack <= sda; -- Vzorkování ACK/NACK
+                        if rw = '1' then state <= MSTR_ACK; -- Budeme číst
+                        elsif stop_on_done = '1' then state <= STP;
+                        else state <= IDLE; busy <= '0'; end if; -- Pro zápis registru
+                    when MSTR_ACK =>
+                        data_out <= shift_reg; -- Tady by bylo vzorkování (zjednodušeno)
+                        sda_out <= stop_on_done; -- '1' pro NACK (konec čtení), '0' pro ACK
+                        state <= STP;
+                    when STP => scl_en <= '0'; sda_out <= '0'; state <= IDLE;
+                end case;
+            end if;
+        end if;
+    end process;
+    scl <= '0' when (scl_en = '1' and i2c_clk = '0') else 'Z';
+    sda <= '0' when (sda_out = '0') else 'Z';
+end architecture; 
