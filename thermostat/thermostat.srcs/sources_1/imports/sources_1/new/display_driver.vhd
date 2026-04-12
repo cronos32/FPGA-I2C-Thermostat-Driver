@@ -67,7 +67,6 @@ architecture Behavioral of display_driver is
     end component counter;
  
     component bin2seg is
-
         port (
             bin : in std_logic_vector(3 downto 0);
             seg : out std_logic_vector(6 downto 0)
