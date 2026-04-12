@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity TermostatLowLevel is
+entity ui_fsm is
     Port (
         clk      : in  STD_LOGIC;      -- Hlavní hodiny
         ce       : in  STD_LOGIC;      -- Clock Enable 
@@ -11,9 +11,9 @@ entity TermostatLowLevel is
         btn_down : in  STD_LOGIC;
         teplota_out : out STD_LOG_VECTOR(11 downto 0)
     );
-end TermostatLowLevel;
+end ui_fsm;
 
-architecture Behavioral of TermostatLowLevel is
+architecture Behavioral of ui_fsm is
     -- Stavové registry
     signal up_latched   : std_logic := '0';
     signal down_latched : std_logic := '0';

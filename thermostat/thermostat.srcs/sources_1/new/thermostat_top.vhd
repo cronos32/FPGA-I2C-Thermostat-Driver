@@ -39,13 +39,17 @@ entity thermostat_top is
         an : out STD_LOGIC_VECTOR (7 downto 0);
         led16_r : out STD_LOGIC;
         led16_g : out STD_LOGIC;
-        led16_b : out STD_LOGIC--;
+        led16_b : out STD_LOGIC;
         TMP_SDA : inout STD_LOGIC;
-        TMP_SCL : out STD_LOGIC
+        TMP_SCL : inout STD_LOGIC
     );
 end thermostat_top;
 
 architecture Behavioral of thermostat_top is
+
+    -- ----------------------------------------------------------------
+    -- Component declarations
+    -- ----------------------------------------------------------------
 
     component display_driver is
         port (
@@ -82,36 +86,57 @@ architecture Behavioral of thermostat_top is
             cool_en : out std_logic
         );
     end component  temp_regulator;
+    
+    component ui_fsm is
+        port (
+            clk         : in  STD_LOGIC;
+            ce          : in  STD_LOGIC;
+            reset       : in  STD_LOGIC;
+            btn_up      : in  STD_LOGIC;
+            btn_down    : in  STD_LOGIC;
+            teplota_out : out STD_LOGIC_VECTOR(11 downto 0)
+        );
+    end component ui_fsm;
 
-    component i2c_master is
-    generic ( CLK_DIV : integer := 250 ); -- 50MHz -> 100kHz --needs to be 100MHz to 100kHz
-    port (
-        clk, rst   : in    std_logic;
-        addr       : in    std_logic_vector(6 downto 0);
-        rw         : in    std_logic;
-        data_in    : in    std_logic_vector(7 downto 0);
-        data_out   : out   std_logic_vector(7 downto 0);
-        start      : in    std_logic;
-        stop_on_done : in  std_logic; -- '1' sends STOP, '0' keep running (for ACK)
-        busy, nack : out   std_logic;
-        scl, sda   : inout std_logic
-    );
-    end component;
+    component adt7420_driver is
+        port (
+            clk, rst : in    std_logic;
+            temp_10x : out   integer range -10000 to 10000;
+            scl, sda : inout std_logic
+        );
+    end component adt7420_driver;
     
     signal sig_display_data : std_logic_vector (31 downto 0); --xxxCxxxC
     signal sig_dp    : std_logic_vector(7 downto 0):= "10111011";  -- decimal points "10111011"
-
+    
+    signal set_temp_slv  : std_logic_vector(11 downto 0);
     signal set_temp     : unsigned(11 downto 0);
-    --signal current_temp : unsigned(11 downto 0);
-    signal sig_current_temp_int : integer;
 
-    signal sda_link   : std_logic;
-    signal scl_link   : std_logic;
+    signal current_temp : unsigned(11 downto 0);
+    signal sig_current_temp_int : integer;
 
 begin
 
-    TMP_SDA <= sda_link;
-    TMP_SCL <= scl_link;
+    set_temp <= unsigned(set_temp_slv);
+
+    ui_fsm_0 : ui_fsm
+        port map (
+            clk         => clk,
+            ce          => sig_ce_ui,
+            reset       => btnc,
+            btn_up      => btnu,
+            btn_down    => btnd,
+            teplota_out => set_temp_slv
+        );
+
+    temp_sensor : adt7420_driver
+        port map (
+            clk      => clk,
+            rst      => btnc,
+            temp_10x => sig_current_temp_int,
+            scl      => TMP_SCL,
+            sda      => TMP_SDA
+        );
 
     display_0 : display_driver
     port map (
@@ -128,7 +153,7 @@ begin
     port map(
         set_temp     => set_temp,
         current_temp => current_temp,
-        sw_unit      => '0',
+        sw_unit      => '0',      ----- needs to be removed
         data_out     => sig_display_data
     );
     
@@ -141,18 +166,8 @@ begin
         led_blue     => led16_b,
         led_green    => led16_g--,
 
-        --heat_en => 
+        --heat_en =>  -not used right now, for later purposes
         --cool_en =>
     );
-
-    temp_sensor : adt7420_driver
-    port map (
-        clk      => clk,
-        rst      => btnc,
-        temp_10x => sig_current_temp_int,
-        scl      => scl_link,
-        sda      => sda_link
-    );
-
 
 end Behavioral;
