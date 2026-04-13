@@ -4,69 +4,130 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity adt7420_driver is
     port (
-        clk, rst   : in std_logic;
-        temp_10x   : out integer; -- e.g. 225 for 22.5°C
-        scl, sda   : inout std_logic
+        clk, rst : in    std_logic;
+        temp_10x : out   integer range -10000 to 10000;
+        scl, sda : inout std_logic
     );
 end entity;
 
 architecture rtl of adt7420_driver is
+
     type state_t is (WAIT_1S,
                      SET_REG,   WAIT_SET,
                      READ_MSB,  WAIT_MSB,
                      READ_LSB,  WAIT_LSB,
                      CALC);
     signal state : state_t := WAIT_1S;
-    signal timer : integer range 0 to 50_000_001 := 0;
-    
-    -- I2C signals
-    signal m_start, m_stop, m_busy, m_rw : std_logic;
-    signal m_din, m_dout : std_logic_vector(7 downto 0);
-    signal reg_msb, reg_lsb : std_logic_vector(7 downto 0);
+    signal timer : integer range 0 to 100_000_001 := 0;
+
+    signal m_start, m_stop, m_busy, m_rw : std_logic := '0';
+    signal m_din, m_dout                 : std_logic_vector(7 downto 0) := (others => '0');
+    signal m_nack                        : std_logic;  -- connect nack port
+
+    signal cap_msb, cap_lsb : std_logic_vector(7 downto 0) := (others => '0');
+
+    signal raw_13bit : signed(12 downto 0);
+    signal product   : signed(25 downto 0);
+
 begin
 
+    -- Combinational temperature decode — synthesis infers a DSP multiplier
+    raw_13bit <= signed(cap_msb & cap_lsb(7 downto 3));
+    product   <= resize(raw_13bit, 26) * to_signed(625, 26);
+    temp_10x  <= to_integer(product) / 1000;
+
     I2C_INST: entity work.i2c_master
-        port map (clk=>clk, rst=>rst, addr=>"1001000", rw=>m_rw, data_in=>m_din, 
-                  data_out=>m_dout, start=>m_start, stop_on_done=>m_stop, 
-                  busy=>m_busy, scl=>scl, sda=>sda);
+        port map (
+            clk          => clk,
+            rst          => rst,
+            addr         => "1001000",   -- ADT7420 default address
+            rw           => m_rw,
+            data_in      => m_din,
+            data_out     => m_dout,
+            start        => m_start,
+            stop_on_done => m_stop,
+            busy         => m_busy,
+            nack         => m_nack,
+            scl          => scl,
+            sda          => sda
+        );
 
     process(clk)
-        variable raw_13bit : signed(12 downto 0);
     begin
         if rising_edge(clk) then
-            m_start <= '0';
-            case state is
-                when WAIT_1S =>
-                    if timer = 50_000_000 then -- 1 sekunda při 50MHz
-                        timer <= 0; state <= SET_REG;
-                    else timer <= timer + 1; end if;
+            m_start <= '0';  -- default: no pulse
 
-                when SET_REG => -- Řekneme "chci registr 0x00"
-                    m_rw <= '0'; m_din <= x"00"; m_stop <= '1'; m_start <= '1';
-                    if m_busy = '1' then state <= READ_MSB; end if;
+            if rst = '1' then
+                state   <= WAIT_1S;
+                timer   <= 0;
+                cap_msb <= (others => '0');
+                cap_lsb <= (others => '0');
 
-                when READ_MSB =>
-                    if m_busy = '0' then
-                        m_rw <= '1'; m_stop <= '0'; m_start <= '1'; -- Čteme, chceme další (ACK)
-                        state <= READ_LSB;
-                    end if;
+            else
+                case state is
 
-                when READ_LSB =>
-                    if m_busy = '1' then reg_msb <= m_dout; end if;
-                    if m_busy = '0' then
-                        m_rw <= '1'; m_stop <= '1'; m_start <= '1'; -- Čteme poslední (NACK)
-                        state <= CALC;
-                    end if;
+                    when WAIT_1S =>
+                        if timer = 100_000_000 then
+                            timer <= 0; state <= SET_REG;
+                        else
+                            timer <= timer + 1;
+                        end if;
 
-                when CALC =>
-                    if m_busy = '1' then reg_lsb <= m_dout; end if;
-                    if m_busy = '0' then
-                        -- Výpočet: (Raw * 625) / 1000
-                        raw_13bit := signed(reg_msb & reg_lsb(7 downto 3));
-                        temp_10x <= to_integer(raw_13bit * 625) / 1000;
+                    -- Write register pointer (0x00 = temperature register)
+                    when SET_REG =>
+                        m_rw   <= '0';
+                        m_din  <= x"00";
+                        m_stop <= '0';    -- no STOP: keep bus for repeated START
+                        m_start <= '1';
+                        state   <= WAIT_SET;
+
+                    when WAIT_SET =>
+                        -- Standard Handshake. Wait for Master to start, then wait for it to finish.
+                        if m_busy = '1' then 
+                            m_start <= '0'; -- Clear start pulse immediately
+                        elsif m_busy = '0' and m_start = '0' then
+                            state <= READ_MSB; 
+                        end if;
+
+                    -- Start reading MSB (first of two bytes)
+                    when READ_MSB =>
+                        m_rw    <= '1';
+                        m_stop  <= '0'; -- ACK
+                        m_start <= '1';
+                        state   <= WAIT_MSB;
+
+                    -- Handshake to ensure data is ready
+                    when WAIT_MSB =>
+                        if m_busy = '1' then 
+                            m_start <= '0'; 
+                        elsif m_busy = '0' and m_start = '0' then
+                            cap_msb <= m_dout; -- Capture happens exactly when transaction ends
+                            state <= READ_LSB;
+                        end if;
+
+                    -- First read completes → capture MSB, start LSB read
+                    when READ_LSB =>
+                        m_rw    <= '1';
+                        m_stop  <= '1'; -- NACK: last byte
+                        m_start <= '1';
+                        state   <= WAIT_LSB;
+
+                    when WAIT_LSB =>
+                        if m_busy = '1' then 
+                            m_start <= '0';
+                        elsif m_busy = '0' and m_start = '0' then
+                            cap_lsb <= m_dout;
+                            state <= CALC;
+                        end if;
+
+                    -- Second read completes → capture LSB
+                    when CALC =>
                         state <= WAIT_1S;
-                    end if;
-            end case;
+
+                    when others => state <= WAIT_1S;
+                end case;
+            end if;
         end if;
     end process;
+
 end architecture;
