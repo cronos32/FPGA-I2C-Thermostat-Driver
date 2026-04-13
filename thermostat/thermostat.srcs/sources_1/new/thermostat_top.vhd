@@ -119,10 +119,25 @@ begin
 
     set_temp <= unsigned(set_temp_slv);
 
-    ui_fsm_0 : ui_fsm
+  
+    -- Convert sensor integer to unsigned(11:0) with clamp
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if sig_current_temp_int < 0 then
+                current_temp <= (others => '0');
+            elsif sig_current_temp_int > 4095 then
+                current_temp <= (others => '1');
+            else
+                current_temp <= to_unsigned(sig_current_temp_int, 12);
+            end if;
+        end if;
+    end process;
+ 
+    -- UI FSM: no ce port, clk_en is instantiated inside TermostatLowLevel
+    ui_fsm_0 : TermostatLowLevel
         port map (
             clk         => clk,
-            ce          => sig_ce_ui,
             reset       => btnc,
             btn_up      => btnu,
             btn_down    => btnd,
