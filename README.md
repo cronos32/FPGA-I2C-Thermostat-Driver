@@ -61,11 +61,10 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 flowchart TD
 
     %% ── External I/O ──────────────────────────────────────────────
-    CLK([clk\n50 MHz])
+    CLK([clk])
     BTNC([btnc\nreset])
-    BTNU([btnu\nbtn_up])
-    BTND([btnd\nbtn_down])
-    SW([sw\nC / F])
+    BTNU([btnu\nup])
+    BTND([btnd\ndown])
     I2C_BUS([ADT7420 sensor\nSDA / SCL])
 
     SEG([7-seg display\nseg / an / dp])
@@ -74,65 +73,71 @@ flowchart TD
     COOL([cool_en])
 
     %% ── Modules ───────────────────────────────────────────────────
-    TOP["thermostat_top\n─────────────\nce_counter → ce_tick\nint clamp register"]
+    TOP["thermostat_top\n─────────────\nsync current_temp\nclamp logic\n[cite: 1, 12]"]
 
-    UI["TermostatLowLevel\nui_fsm\n─────────────────\nlatch capture process\ntemp_reg FSM\n\nout: teplota_out 12b"]
+    subgraph UI ["ui_fsm (User Interface) [cite: 48, 49]"]
+        CE["clk_en\n(G_MAX=10^7)\n[cite: 56, 82]"]
+        DBU["debounce\n(up)\n[cite: 57, 83]"]
+        DBD["debounce\n(down)\n[cite: 58]"]
+        FSM["UI Logic\ntemp_reg: 55-395\n"]
+    end
 
-    SENS["adt7420_driver\n───────────────\nWAIT_1S → SET_REG\n→ READ_MSB/LSB → CALC\n\nconcurrent multiply\nout: temp_10x int"]
+    subgraph SENS_GRP ["Sensor Subsystem"]
+        SENS["adt7420_driver\n───────────────\nFSM Control\nFixed-pt: * 625 / 1000\n[cite: 101, 108]"]
+        I2C["i2c_master\n──────────\nQuarter-period FSM\nOpen-drain OE\n[cite: 109, 210]"]
+    end
 
-    I2C["i2c_master\n──────────\nquarter-period FSM\nIDLE→START→SEND_BITS\n→ACK→READ→STOP\n\nopen-drain OE control"]
+    COMB["display_data_combiner\n─────────────────────\nBCD: hundreds/tens/ones\nUnit: C / F\n[cite: 162, 164]"]
 
-    COMB["display_data_combiner\n─────────────────────\nconcurrent BCD decode\nclamp ≤ 999\nout: data_out 32b"]
+    REG["temp_regulator\n──────────────\nHysteresis: 0.5°C\n[cite: 187, 188]"]
 
-    REG["temp_regulator\n──────────────\nhysteresis ±0.5°C\ncombinational"]
+    DISP["display_driver\n──────────────\nRefresh Multiplexer\n[cite: 24, 25]"]
 
-    DISP["display_driver\n──────────────\n7-seg multiplex"]
-
-    %% ── Clock & Reset ─────────────────────────────────────────────
+    %% ── Connections ─────────────────────────────────────────────
     CLK  --> TOP
     CLK  --> UI
     CLK  --> SENS
-    CLK  --> I2C
     CLK  --> DISP
+    
     BTNC -->|reset| TOP
-    BTNC -->|reset| SENS
-    BTNC -->|reset| I2C
+    BTNC -->|reset| UI
+    BTNC -->|rst| SENS
     BTNC -->|rst| DISP
 
-    %% ── Button inputs ─────────────────────────────────────────────
-    BTNU -->|btn_up| UI
-    BTND -->|btn_down| UI
-    TOP  -->|ce_tick ~10Hz| UI
+    %% ── UI Internal & External ────────────────────────────────────
+    BTNU --> DBU
+    BTND --> DBD
+    CE   -->|ce 10Hz| FSM
+    DBU  -->|press_up| FSM
+    DBD  -->|press_down| FSM
+    FSM  -->|teplota_out 12b| TOP
 
-    %% ── Set temperature path ──────────────────────────────────────
-    UI   -->|teplota_out 12b SLV| TOP
-    TOP  -->|set_temp unsigned 12b| COMB
-    TOP  -->|set_temp unsigned 12b| REG
+    %% ── Data Flow ───────────────────────────────────────────────
+    TOP  -->|set_temp| COMB
+    TOP  -->|set_temp| REG
+    
+    SENS -->|temp_10x| TOP
+    TOP  -->|current_temp| COMB
+    TOP  -->|current_temp| REG
 
-    %% ── Sensor path ───────────────────────────────────────────────
-    SENS -->|temp_10x int| TOP
-    TOP  -->|current_temp unsigned 12b| COMB
-    TOP  -->|current_temp unsigned 12b| REG
-    SENS <-->|SCL / SDA| I2C
-    I2C  <-->|TMP_SCL / TMP_SDA| I2C_BUS
+    SENS <--> I2C
+    I2C  <-->|SCL / SDA| I2C_BUS
 
-    %% ── Display path ──────────────────────────────────────────────
-    SW   -->|sw_unit| COMB
+    %% ── Output ────────────────────────────────────────────────────
     COMB -->|data_out 32b| DISP
-    DISP -->|seg 7b / an 8b / dp| SEG
+    DISP -->|seg / anode / dp| SEG
 
-    %% ── Regulator outputs ─────────────────────────────────────────
-    REG  -->|led_red / blue / green| LED
+    REG  -->|led_r/g/b| LED
     REG  -->|heat_en| HEAT
     REG  -->|cool_en| COOL
 
     %% ── Styles ────────────────────────────────────────────────────
-    classDef io      fill:#E6F1FB,stroke:#185FA5,color:#0C447C
-    classDef module  fill:#EAF3DE,stroke:#3B6D11,color:#27500A
-    classDef top     fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    classDef io     fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    classDef module fill:#EAF3DE,stroke:#3B6D11,color:#27500A
+    classDef top    fill:#EEEDFE,stroke:#534AB7,color:#3C3489
 
-    class CLK,BTNC,BTNU,BTND,SW,I2C_BUS,SEG,LED,HEAT,COOL io
-    class UI,SENS,I2C,COMB,REG,DISP module
+    class CLK,BTNC,BTNU,BTND,I2C_BUS,SEG,LED,HEAT,COOL io
+    class COMB,REG,DISP,UI,SENS,I2C module
     class TOP top
 
 ```
