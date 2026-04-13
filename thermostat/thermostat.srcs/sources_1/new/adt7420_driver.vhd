@@ -5,17 +5,21 @@ use IEEE.NUMERIC_STD.ALL;
 entity adt7420_driver is
     port (
         clk, rst   : in std_logic;
-        temp_10x   : out integer; -- Např. 225 pro 22.5°C
+        temp_10x   : out integer; -- e.g. 225 for 22.5°C
         scl, sda   : inout std_logic
     );
 end entity;
 
 architecture rtl of adt7420_driver is
-    type state_t is (WAIT_1S, SET_REG, READ_MSB, READ_LSB, CALC);
+    type state_t is (WAIT_1S,
+                     SET_REG,   WAIT_SET,
+                     READ_MSB,  WAIT_MSB,
+                     READ_LSB,  WAIT_LSB,
+                     CALC);
     signal state : state_t := WAIT_1S;
-    signal timer : integer := 0;
+    signal timer : integer range 0 to 50_000_001 := 0;
     
-    -- I2C signály
+    -- I2C signals
     signal m_start, m_stop, m_busy, m_rw : std_logic;
     signal m_din, m_dout : std_logic_vector(7 downto 0);
     signal reg_msb, reg_lsb : std_logic_vector(7 downto 0);

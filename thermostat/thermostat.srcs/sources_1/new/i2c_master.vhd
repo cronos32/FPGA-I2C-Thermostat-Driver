@@ -2,8 +2,20 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
+-- I2C Master — single byte per transaction (addr + 1 data byte)
+-- CLK_DIV = half-period in system clock cycles
+-- At CLK_DIV=500, 100 MHz: SCL = 100e6 / (4 * 250) = 100 kHz
+--
+-- Each I2C bit uses 4 quarter-period ticks:
+--   phase 0,1 : SCL low  (SDA set up here)
+--   phase 2,3 : SCL high (SDA sampled at phase 2 for reads)
+-- State advances at the phase 3→0 boundary (end of each bit).
+--
+-- Transaction sequence:
+--   IDLE → STRT → ADDR(8 bits) → ADDR_ACK → DATA(8 bits) → DATA_ACK → [STP | IDLE]
+
 entity i2c_master is
-    generic ( CLK_DIV : integer := 250 ); -- 50MHz -> 100kHz
+    generic ( CLK_DIV : integer := 500 ); -- 100MHz -> 100kHz
     port (
         clk, rst   : in    std_logic;
         addr       : in    std_logic_vector(6 downto 0);
@@ -11,7 +23,7 @@ entity i2c_master is
         data_in    : in    std_logic_vector(7 downto 0);
         data_out   : out   std_logic_vector(7 downto 0);
         start      : in    std_logic;
-        stop_on_done : in  std_logic; -- '1' pošle STOP, '0' nechá běžet (pro ACK)
+        stop_on_done : in  std_logic; -- '1' sends STOP, '0' keeps runing (for ACK)
         busy, nack : out   std_logic;
         scl, sda   : inout std_logic
     );
