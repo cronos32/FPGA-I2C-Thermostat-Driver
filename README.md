@@ -12,7 +12,7 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 
 ✅ **Lab 1: Architecture.** Block diagram design, role assignment, Git initialization, `.xdc` file preparation.
 
- **Lab 2: Unit Design.** Development of individual modules, testbench simulation, Git updates.
+✅ **Lab 2: Unit Design.** Development of individual modules, testbench simulation, Git updates.
 
  **Lab 3: Integration.** Merging modules into the Top-level entity, synthesis, and initial HW testing, Git updates.
 
@@ -141,3 +141,61 @@ flowchart TD
     class TOP top
 
 ```
+
+## VHDL FSM diagrams
+
+### States of i2c_master
+
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE
+
+    IDLE --> STRT : start_pending=1
+    IDLE --> IDLE : otherwise
+
+    STRT --> ADDR_S : after START condition
+
+    ADDR_S --> ADDR_S : bit_idx != 0
+    ADDR_S --> ADDR_ACK : bit_idx == 0
+
+    ADDR_ACK --> DATA : always
+
+    DATA --> DATA : bit_idx != 0
+    DATA --> DATA_ACK : bit_idx == 0
+
+    DATA_ACK --> STP : stop_on_done=1
+    DATA_ACK --> IDLE : stop_on_done=0
+
+    STP --> IDLE
+```
+
+### States of adt7420_driver
+
+```mermaid
+stateDiagram-v2
+    [*] --> WAIT_1S
+
+    WAIT_1S --> WAIT_1S : timer < 1s
+    WAIT_1S --> SET_REG : timer done
+
+    SET_REG --> WAIT_SET
+
+    WAIT_SET --> WAIT_SET : m_busy=1
+    WAIT_SET --> READ_MSB : m_busy=0 && start=0
+
+    READ_MSB --> WAIT_MSB
+
+    WAIT_MSB --> WAIT_MSB : m_busy=1
+    WAIT_MSB --> READ_LSB : m_busy=0 && start=0
+
+    READ_LSB --> WAIT_LSB
+
+    WAIT_LSB --> WAIT_LSB : m_busy=1
+    WAIT_LSB --> CALC : m_busy=0 && start=0
+
+    CALC --> WAIT_1S
+```
+
+## Simulations
+
+## References
