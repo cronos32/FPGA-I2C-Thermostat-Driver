@@ -67,8 +67,6 @@ architecture Behavioral of thermostat_top is
         port (
             set_temp     : in  unsigned(11 downto 0); -- for example 232
             current_temp : in  unsigned(11 downto 0); -- for example 244
-            sw_unit      : in  std_logic;             -- 0 = C, 1 = F
-  
             data_out     : out std_logic_vector(31 downto 0)
         );
     end component display_data_combiner;
@@ -90,7 +88,6 @@ architecture Behavioral of thermostat_top is
     component ui_fsm is
         port (
             clk         : in  STD_LOGIC;
-            ce          : in  STD_LOGIC;
             reset       : in  STD_LOGIC;
             btn_up      : in  STD_LOGIC;
             btn_down    : in  STD_LOGIC;
@@ -134,8 +131,8 @@ begin
         end if;
     end process;
  
-    -- UI FSM: no ce port, clk_en is instantiated inside TermostatLowLevel
-    ui_fsm_0 : TermostatLowLevel
+    -- UI FSM: no ce port, clk_en is instantiated inside ui_fsm
+    ui_fsm_0 : ui_fsm
         port map (
             clk         => clk,
             reset       => btnc,
@@ -168,7 +165,6 @@ begin
     port map(
         set_temp     => set_temp,
         current_temp => current_temp,
-        sw_unit      => '0',      ----- needs to be removed
         data_out     => sig_display_data
     );
     

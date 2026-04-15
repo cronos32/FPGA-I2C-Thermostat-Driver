@@ -1,0 +1,75 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all; -- NUTNÉ PRO TYP UNSIGNED A FUNKCI TO_UNSIGNED
+
+entity tb_temp_regulator is
+end tb_temp_regulator;
+
+architecture tb of tb_temp_regulator is
+
+    component temp_regulator
+        port (set_temp     : in unsigned (11 downto 0);
+              current_temp : in unsigned (11 downto 0);
+              led_red      : out std_logic;
+              led_blue     : out std_logic;
+              led_green    : out std_logic;
+              heat_en      : out std_logic;
+              cool_en      : out std_logic);
+    end component;
+
+    signal set_temp     : unsigned (11 downto 0);
+    signal current_temp : unsigned (11 downto 0);
+    signal led_red      : std_logic;
+    signal led_blue     : std_logic;
+    signal led_green    : std_logic;
+    signal heat_en      : std_logic;
+    signal cool_en      : std_logic;
+
+begin
+
+    dut : temp_regulator
+    port map (set_temp     => set_temp,
+              current_temp => current_temp,
+              led_red      => led_red,
+              led_blue     => led_blue,
+              led_green    => led_green,
+              heat_en      => heat_en,
+              cool_en      => cool_en);
+
+    stimuli : process
+    begin
+        -- Inicializace: Cílová teplota 25.0 °C (v kódu jako 250)
+        set_temp <= to_unsigned(250, 12);
+        current_temp <= to_unsigned(250, 12);
+        wait for 100 ns;
+
+        -- TEST 1: Příliš zima (20.0 °C)
+        -- Očekáváme: heat_en='1', led_red='1'
+        current_temp <= to_unsigned(200, 12);
+        wait for 100 ns;
+
+        -- TEST 2: Teplota v pásmu hystereze (24.8 °C)
+        -- Hystereze je 5 (0.5 °C), takže 250-5 = 245. 
+        -- 248 je víc než 245, takže by mělo svítit led_green='1'
+        current_temp <= to_unsigned(248, 12);
+        wait for 100 ns;
+
+        -- TEST 3: Příliš horko (30.0 °C)
+        -- Očekáváme: cool_en='1', led_blue='1'
+        current_temp <= to_unsigned(300, 12);
+        wait for 100 ns;
+
+        -- TEST 4: Horní hrana hystereze (25.4 °C)
+        -- 250+5 = 255. 254 je stále v limitu -> led_green='1'
+        current_temp <= to_unsigned(254, 12);
+        wait for 100 ns;
+
+        -- TEST 5: Skok nad hranu (25.6 °C)
+        -- Očekáváme: cool_en='1', led_blue='1'
+        current_temp <= to_unsigned(256, 12);
+        wait for 100 ns;
+
+        wait; -- Konec testu
+    end process;
+
+end tb;

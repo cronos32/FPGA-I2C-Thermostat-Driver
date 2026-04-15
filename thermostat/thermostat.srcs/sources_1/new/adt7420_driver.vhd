@@ -27,14 +27,20 @@ architecture rtl of adt7420_driver is
     signal cap_msb, cap_lsb : std_logic_vector(7 downto 0) := (others => '0');
 
     signal raw_13bit : signed(12 downto 0);
-    signal product   : signed(25 downto 0);
+    signal product_26   : signed(25 downto 0);
 
 begin
 
-    -- Combinational temperature decode — synthesis infers a DSP multiplier
+    -- 1. Extract the 13 bits
     raw_13bit <= signed(cap_msb & cap_lsb(7 downto 3));
-    product   <= resize(raw_13bit, 26) * to_signed(625, 26);
-    temp_10x  <= to_integer(product) / 1000;
+
+    -- 2. Multiply 13-bit signal by a 13-bit constant (625 fits in 10 bits, so 13 is safe)
+    -- 13 bits * 13 bits = exactly 26 bits. No 64-bit expansion!
+    product_26 <= raw_13bit * to_signed(625, 13);
+
+    -- 3. Convert the 26-bit result to integer and divide by 1000
+    temp_10x <= to_integer(product_26) / 1000;
+    --temp_10x  <= to_integer(product) / 1000;
 
     I2C_INST: entity work.i2c_master
         port map (

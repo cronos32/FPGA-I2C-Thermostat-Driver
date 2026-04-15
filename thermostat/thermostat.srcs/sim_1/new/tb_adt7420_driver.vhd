@@ -1,0 +1,71 @@
+-- Testbench automatically generated online
+-- at https://vhdl.lapinoo.net
+-- Generation date : Wed, 15 Apr 2026 09:24:28 GMT
+-- Request id : cfwk-fed377c2-69df594c497ea
+
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity tb_adt7420_driver is
+end tb_adt7420_driver;
+
+architecture tb of tb_adt7420_driver is
+
+    component adt7420_driver
+        port (clk      : in std_logic;
+              rst      : in std_logic;
+              temp_10x : out integer;
+              scl      : inout std_logic;
+              sda      : inout std_logic);
+    end component;
+
+    signal clk      : std_logic;
+    signal rst      : std_logic;
+    signal temp_10x : integer;
+    signal scl      : std_logic;
+    signal sda      : std_logic;
+
+    constant TbPeriod : time := 1000 ns; -- ***EDIT*** Put right period here
+    signal TbClock : std_logic := '0';
+    signal TbSimEnded : std_logic := '0';
+
+begin
+    scl <= 'H';
+    sda <= 'H';
+    dut : adt7420_driver
+    port map (clk      => clk,
+              rst      => rst,
+              temp_10x => temp_10x,
+              scl      => scl,
+              sda      => sda);
+
+    -- Clock generation
+    TbClock <= not TbClock after TbPeriod/2 when TbSimEnded /= '1' else '0';
+
+    -- ***EDIT*** Check that clk is really your main clock signal
+    clk <= TbClock;
+
+    stimuli : process
+    begin
+        -- Inicializace
+        rst <= '1';
+        wait for 100 ns;
+        rst <= '0';
+        
+        -- Teď musíme počkat, až driver projde stavem WAIT_1S
+        -- V reálu to trvá 1s, v simulaci to bude chvíli trvat, než se to prokouše
+        wait for 1100 ms; 
+
+        -- Tady simulace skončí
+        TbSimEnded <= '1';
+        wait;
+    end process;
+
+end tb;
+
+-- Configuration block below is required by some simulators. Usually no need to edit.
+
+configuration cfg_tb_adt7420_driver of tb_adt7420_driver is
+    for tb
+    end for;
+end cfg_tb_adt7420_driver;

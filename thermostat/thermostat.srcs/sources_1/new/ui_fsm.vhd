@@ -8,7 +8,7 @@ entity ui_fsm is
         reset    : in  STD_LOGIC;       -- Synchronous reset
         btn_up   : in  STD_LOGIC;       -- Raw input from UP button
         btn_down : in  STD_LOGIC;       -- Raw input from DOWN button
-        teplota_out : out STD_LOG_VECTOR(11 downto 0)
+        temp_out : out STD_LOGIC_VECTOR(11 downto 0)
     );
 end ui_fsm;
 
@@ -93,11 +93,11 @@ begin
                 down_latched <= '0';
             else
                 -- Catch the debouncer pulse
-                if btn_up = '1' then
+                if press_up = '1' then
                     up_latched <= '1';
                 end if;
  
-                if btn_down = '1' then
+                if press_down = '1' then
                     down_latched <= '1';
                 end if;
 
@@ -141,6 +141,6 @@ begin
     end process;
 
     -- Output assignment
-    teplota_out <= std_logic_vector(to_unsigned(temp_reg, 12));
+    temp_out <= std_logic_vector(to_unsigned(temp_reg, 12));
  
 end Behavioral;

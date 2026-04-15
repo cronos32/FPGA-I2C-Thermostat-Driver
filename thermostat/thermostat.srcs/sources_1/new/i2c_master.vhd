@@ -34,7 +34,7 @@ architecture rtl of i2c_master is
     -- Quarter-period: CLK_DIV/2 system cycles per phase tick
     constant Q : integer := CLK_DIV / 2;
 
-    type state_t is (IDLE, STRT, ADDR, ADDR_ACK, DATA, DATA_ACK, STP);
+    type state_t is (IDLE, STRT, ADDR_S, ADDR_ACK, DATA, DATA_ACK, STP);
     signal state : state_t := IDLE;
 
     signal q_cnt    : integer range 0 to Q-1 := 0;
@@ -129,13 +129,13 @@ begin
                                 when 2 => scl_oe <= '1'; sda_oe <= '1';  -- SCL falls
                                 when 3 =>
                                     bit_idx <= 7;
-                                    state   <= ADDR;
+                                    state   <= ADDR_S;
                                 when others => null;
                             end case;
 
                         -- --------------------------------------------------------
                         -- ADDR: send 8 bits (7-bit address + R/W)
-                        when ADDR =>
+                        when ADDR_S =>
                             case phase is
                                 when 0 =>
                                     scl_oe <= '1';  -- SCL low: set SDA

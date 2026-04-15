@@ -1,0 +1,70 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity tb_ui_fsm is
+end tb_ui_fsm;
+
+architecture tb of tb_ui_fsm is
+
+    component ui_fsm
+        port (clk         : in  std_logic;
+              reset       : in  std_logic;
+              btn_up      : in  std_logic;
+              btn_down    : in  std_logic;
+              temp_out : out std_logic_vector (11 downto 0));
+    end component;
+
+    signal clk         : std_logic := '0';
+    signal reset       : std_logic;
+    signal btn_up      : std_logic := '0';
+    signal btn_down    : std_logic := '0';
+    signal temp_out : std_logic_vector (11 downto 0);
+
+    constant TbPeriod : time := 10 ns; -- 100 MHz
+    signal TbSimEnded : std_logic := '0';
+
+begin
+
+    dut : ui_fsm
+    port map (clk         => clk,
+              reset       => reset,
+              btn_up      => btn_up,
+              btn_down    => btn_down,
+              temp_out => temp_out);
+
+    -- Generování hodin
+    clk <= not clk after TbPeriod/2 when TbSimEnded /= '1' else '0';
+
+    stimuli : process
+    begin
+        -- 1. Reset
+        reset <= '1';
+        wait for 100 ns;
+        reset <= '0';
+        wait for 100 ns;
+
+        -- Výchozí teplota by měla být 220 (v hex 0x0DC)
+        
+        -- 2. Simulace stisku UP (přidání 0.5 stupně)
+        -- Tlačítko musíme podržet dostatečně dlouho, aby ho debouncer vzal
+        -- a zároveň aby přišel Clock Enable (který máš nastavený na 10 Hz = 100 ms!)
+        btn_up <= '1';
+        wait for 1000 ms; -- Čekáme déle než je perioda 10Hz CE
+        btn_up <= '0';
+        
+        wait for 500 ms;
+
+        -- 3. Simulace stisku DOWN
+        btn_down <= '1';
+        wait for 120 ms;
+        btn_down <= '0';
+
+        wait for 200 ms;
+
+        -- Ukončení
+        TbSimEnded <= '1';
+        wait;
+    end process;
+
+end tb;

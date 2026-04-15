@@ -10,14 +10,13 @@ entity display_data_combiner is
     port (
         set_temp     : in  unsigned(11 downto 0); -- for example 232
         current_temp : in  unsigned(11 downto 0); -- for example 244
-        sw_unit      : in  std_logic;             -- 0 = C, 1 = F
         data_out     : out std_logic_vector(31 downto 0)
     );
 end display_data_combiner;
 
 architecture Behavioral of display_data_combiner is
 
-    function to_bcd4(val : unsigned(11 downto 0); unit : std_logic)
+    function to_bcd4(val : unsigned(11 downto 0))
         return std_logic_vector is
         variable v        : integer;
         variable hundreds : integer;
@@ -38,18 +37,13 @@ architecture Behavioral of display_data_combiner is
         result(15 downto 12) := std_logic_vector(to_unsigned(hundreds, 4));
         result(11 downto 8)  := std_logic_vector(to_unsigned(tens,     4));
         result(7  downto 4)  := std_logic_vector(to_unsigned(ones,     4));
-
-        if unit = '0' then
-            result(3 downto 0) := x"C";  -- 'C' in bin2seg
-        else
-            result(3 downto 0) := x"F";  -- 'F' in bin2seg
-        end if;
+        result(3 downto 0) := x"C";  -- 'C' in bin2seg
 
         return result;
     end function;
 
 begin
 
-    data_out <= to_bcd4(set_temp, sw_unit) & to_bcd4(current_temp, sw_unit);
+    data_out <= to_bcd4(set_temp) & to_bcd4(current_temp);
 
 end Behavioral;
