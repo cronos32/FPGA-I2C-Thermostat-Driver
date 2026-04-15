@@ -203,6 +203,7 @@ stateDiagram-v2
 ```
 
 ## Simulations
+
 [tb_adt7420_driver.vhd](thermostat/thermostat.srcs/sim_1/new/tb_adt7420_driver.vhd)
 [tb_debounce.vhd](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
 [tb_display_data_combiner.vhd](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
