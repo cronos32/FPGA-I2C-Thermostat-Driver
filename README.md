@@ -13,7 +13,6 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 ✅ **Lab 1: Architecture.** Block diagram design, role assignment, Git initialization, `.xdc` file preparation.
 
 ✅ **Lab 2: Unit Design.** Development of individual modules, testbench simulation, Git updates.
-**Lab 2: Unit Design.** Development of individual modules, testbench simulation, Git updates.
 
  **Lab 3: Integration.** Merging modules into the Top-level entity, synthesis, and initial HW testing, Git updates.
 
