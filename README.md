@@ -203,5 +203,19 @@ stateDiagram-v2
 ```
 
 ## Simulations
+[tb_adt7420_driver.vhd](thermostat/thermostat.srcs/sim_1/new/tb_adt7420_driver.vhd)
+[tb_debounce.vhd](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
+[tb_display_data_combiner.vhd](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
+[tb_i2c_master.vhd](thermostat/thermostat.srcs/sim_1/new/tb_i2c_master.vhd)
+[tb_temp_regulator.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_temp_regulator.vhd)
+[tb_thermostat_top.vhd](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
+[tb_ui_fsm.vhd](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
+
+>[NOTE]
+>missing:
+>tb_display_driver
+>tb_bin2seg
+>tb_counter
+>tb_clk_en
 
 ## References
