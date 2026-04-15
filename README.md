@@ -54,7 +54,9 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 | `TMP_SDA` |  inout    | `std_logic`                    | I²C serial data line                               |
 | `TMP_SCL` |   out     | `std_logic`                    | I²C serial clock line                              |
 
-## Diagram (work in progress)
+## Block diagram
+
+### Diagram of initial design
 
 ```mermaid
 
@@ -141,6 +143,10 @@ flowchart TD
     class TOP top
 
 ```
+
+### Diagram of final design
+
+![Diagram of final design](thermostat_top_blokove_schema.png)
 
 ## VHDL FSM diagrams
 
