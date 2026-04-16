@@ -7,7 +7,6 @@ end tb_adt7420_driver;
 
 architecture tb of tb_adt7420_driver is
 
-    -- Fix: Added range to match entity for strict simulators
     component adt7420_driver
         port (clk      : in std_logic;
               rst      : in std_logic;
@@ -22,13 +21,12 @@ architecture tb of tb_adt7420_driver is
     signal scl      : std_logic;
     signal sda      : std_logic;
 
-    -- Fix: 100 MHz clock (10 ns period)
     constant TbPeriod : time := 10 ns; 
     signal TbClock    : std_logic := '0';
     signal TbSimEnded : std_logic := '0';
 
 begin
-    -- Pull-ups for I2C lines
+    -- Pull-upy jsou kritické!
     scl <= 'H';
     sda <= 'H';
 
@@ -39,32 +37,34 @@ begin
               scl      => scl,
               sda      => sda);
 
-    -- Clock generation
+    -- Generování hodin
     TbClock <= not TbClock after TbPeriod/2 when TbSimEnded /= '1' else '0';
     clk <= TbClock;
 
     -----------------------------------------------------------------------
-    -- SIMPLE I2C SLAVE MODEL (The "Fake" ADT7420)
+    -- VYLEPŠENÝ I2C SLAVE MODEL
     -----------------------------------------------------------------------
-    -- This process provides ACKs so the FSM doesn't stall.
-    -- It simply pulls SDA low whenever SCL is high during an ACK slot.
-    -----------------------------------------------------------------------
-    i2c_responder : process
+    p_i2c_slave : process
     begin
         sda <= 'Z';
-        wait until falling_edge(scl);
-        -- Simple logic: monitor SCL pulses. 
-        -- For a real test, you'd count 8 bits then drive '0' on the 9th.
-        -- Here we just keep SDA high-impedance unless we want to force a dummy ACK.
-        loop
-            for i in 0 to 7 loop
-                wait until falling_edge(scl);
-            end loop;
-            -- 9th bit (ACK)
-            sda <= '0'; 
+        
+        -- 1. Čekání na START podmínku (SDA padá, když SCL je log. 1)
+        wait until falling_edge(sda) and (to_x01(scl) = '1');
+        
+        -- 2. Přijetí adresy (8 bitů: 7 adresa + 1 R/W)
+        for i in 0 to 7 loop
             wait until falling_edge(scl);
-            sda <= 'Z';
         end loop;
+        
+        -- 3. Odeslání ACK (9. bit)
+        -- Musíme počkat, až SCL padne, pak stáhnout SDA na '0'
+        wait for 100 ns; -- Malá prodleva pro stabilitu
+        sda <= '0'; 
+        wait until falling_edge(scl);
+        sda <= 'Z';
+
+        -- Poznámka: Tento model pošle jen jeden ACK pro první byte. 
+        -- Pro kompletní simulaci by zde měl být loop pro další byty.
     end process;
 
     stimuli : process
@@ -74,13 +74,13 @@ begin
         wait for 100 ns;
         rst <= '0';
         
-        -- Fix: Simulation timing.
-        -- If DUT waits 100M cycles at 100MHz, that is exactly 1 second.
-        -- We wait slightly more than 1s to see the first I2C transaction.
+        -- POZOR: Pokud váš driver čeká 1 vteřinu reálného času,
+        -- simulace se může zdát "zaseknutá". 
+        -- Doporučuji v adt7420_driver.vhd dočasně snížit čítač pro WAIT_1S.
+        
         wait for 1001 ms; 
 
-        -- End simulation
-        report "Simulation finished after first read cycle.";
+        report "Simulace ukoncena.";
         TbSimEnded <= '1';
         wait;
     end process;

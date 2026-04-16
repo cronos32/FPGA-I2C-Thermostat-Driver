@@ -12,22 +12,29 @@ end entity;
 
 architecture rtl of adt7420_driver is
 
-    type state_t is (WAIT_1S,
-                     SET_REG,   WAIT_SET,
-                     READ_MSB,  WAIT_MSB,
-                     READ_LSB,  WAIT_LSB,
-                     CALC);
+    type state_t is (
+        WAIT_1S,
+
+        CFG_PTR, WAIT_CFG_PTR,
+        CFG_VAL, WAIT_CFG_VAL,
+
+        SET_REG, WAIT_SET,
+        READ_MSB, WAIT_MSB,
+        READ_LSB, WAIT_LSB,
+
+        CALC
+    );
+
     signal state : state_t := WAIT_1S;
     signal timer : integer range 0 to 100_000_001 := 0;
 
+    signal configured : std_logic := '0';
+
     signal m_start, m_stop, m_busy, m_rw : std_logic := '0';
     signal m_din, m_dout                 : std_logic_vector(7 downto 0) := (others => '0');
-    signal m_nack                        : std_logic;  -- connect nack port
+    signal m_nack                        : std_logic;
 
     signal cap_msb, cap_lsb : std_logic_vector(7 downto 0) := (others => '0');
-
-    signal raw_13bit : signed(12 downto 0);
-    signal product_26   : signed(25 downto 0);
 
 begin
 
@@ -35,7 +42,7 @@ begin
         port map (
             clk          => clk,
             rst          => rst,
-            addr         => "1001000",   -- ADT7420 default address
+            addr         => "1001000",
             rw           => m_rw,
             data_in      => m_din,
             data_out     => m_dout,
@@ -47,74 +54,146 @@ begin
             sda          => sda
         );
 
+    ----------------------------------------------------------------
+    -- FSM
+    ----------------------------------------------------------------
     process(clk)
+        variable raw_13bit : signed(12 downto 0);
+        variable tmp       : signed(15 downto 0);
     begin
     -- Ostatní product_26 atd. už nebudete potřebovat
 
         if rising_edge(clk) then
-            m_start <= '0';  -- default: no pulse
+
+            -- defaults
+            m_start <= '0';
+            m_stop  <= '0';
 
             if rst = '1' then
-                state   <= WAIT_1S;
-                timer   <= 0;
-                cap_msb <= (others => '0');
-                cap_lsb <= (others => '0');
+                state       <= WAIT_1S;
+                timer       <= 0;
+                configured  <= '0';
+                cap_msb     <= (others => '0');
+                cap_lsb     <= (others => '0');
+                temp_10x    <= 0;
 
             else
                 case state is
 
+                    ----------------------------------------------------------------
+                    -- Wait / trigger
+                    ----------------------------------------------------------------
                     when WAIT_1S =>
-                        if timer = 100_000_000 then
-                            timer <= 0; state <= SET_REG;
+                        if configured = '0' then
+                            state <= CFG_PTR;
+                        elsif timer = 100_000_000 then
+                            timer <= 0;
+                            state <= SET_REG;
                         else
                             timer <= timer + 1;
                         end if;
 
-                    -- Write register pointer (0x00 = temperature register)
+                    ----------------------------------------------------------------
+                    -- Configure sensor (13-bit mode)
+                    ----------------------------------------------------------------
+                    when CFG_PTR =>
+                        m_rw   <= '0';
+                        m_din  <= x"03";
+                        m_stop <= '0';
+                        m_start <= '1';
+                        state   <= WAIT_CFG_PTR;
+
+                    when WAIT_CFG_PTR =>
+                        if m_busy = '1' then
+                            m_start <= '0';
+                        elsif m_busy = '0' then
+                            if m_nack = '1' then
+                                state <= WAIT_1S;
+                            else
+                                state <= CFG_VAL;
+                            end if;
+                        end if;
+
+                    when CFG_VAL =>
+                        m_rw   <= '0';
+                        m_din  <= x"20"; -- 13-bit mode
+                        m_stop <= '1';
+                        m_start <= '1';
+                        state   <= WAIT_CFG_VAL;
+
+                    when WAIT_CFG_VAL =>
+                        if m_busy = '1' then
+                            m_start <= '0';
+                        elsif m_busy = '0' then
+                            if m_nack = '1' then
+                                state <= WAIT_1S;
+                            else
+                                configured <= '1';
+                                state <= WAIT_1S;
+                            end if;
+                        end if;
+
+                    ----------------------------------------------------------------
+                    -- Set temperature register pointer
+                    ----------------------------------------------------------------
                     when SET_REG =>
                         m_rw   <= '0';
                         m_din  <= x"00";
-                        m_stop <= '0';    -- no STOP: keep bus for repeated START
+                        m_stop <= '0';
                         m_start <= '1';
                         state   <= WAIT_SET;
 
                     when WAIT_SET =>
-                        -- Standard Handshake. Wait for Master to start, then wait for it to finish.
-                        if m_busy = '1' then 
-                            m_start <= '0'; -- Clear start pulse immediately
-                        elsif m_busy = '0' and m_start = '0' then
-                            state <= READ_MSB; 
+                        if m_busy = '1' then
+                            m_start <= '0';
+                        elsif m_busy = '0' then
+                            if m_nack = '1' then
+                                state <= WAIT_1S;
+                            else
+                                state <= READ_MSB;
+                            end if;
                         end if;
 
-                    -- Start reading MSB (first of two bytes)
+                    ----------------------------------------------------------------
+                    -- Read MSB
+                    ----------------------------------------------------------------
                     when READ_MSB =>
                         m_rw    <= '1';
-                        m_stop  <= '0'; -- ACK
+                        m_stop  <= '0';
                         m_start <= '1';
                         state   <= WAIT_MSB;
 
-                    -- Handshake to ensure data is ready
                     when WAIT_MSB =>
-                        if m_busy = '1' then 
-                            m_start <= '0'; 
-                        elsif m_busy = '0' and m_start = '0' then
-                            cap_msb <= m_dout; -- Capture happens exactly when transaction ends
-                            state <= READ_LSB;
+                        if m_busy = '1' then
+                            m_start <= '0';
+                        elsif m_busy = '0' then
+                            if m_nack = '1' then
+                                state <= WAIT_1S;
+                            else
+                                cap_msb <= m_dout;
+                                state <= READ_LSB;
+                            end if;
                         end if;
 
-                    -- First read completes → capture MSB, start LSB read
+                    ----------------------------------------------------------------
+                    -- Read LSB
+                    ----------------------------------------------------------------
                     when READ_LSB =>
                         m_rw    <= '1';
-                        m_stop  <= '1'; -- NACK: last byte
+                        m_stop  <= '1';
                         m_start <= '1';
                         state   <= WAIT_LSB;
 
                     when WAIT_LSB =>
-                        if m_busy = '1' then 
+                        if m_busy = '1' then
                             m_start <= '0';
-                        elsif m_busy = '0' and m_start = '0' then
-                            cap_lsb <= m_dout;
-                            state <= CALC;
+                        elsif m_busy = '0' then
+                            if m_nack = '1' then
+                                state <= WAIT_1S;
+                            else
+                                cap_lsb <= m_dout;
+                                state <= CALC;
+                            end if;
                         end if;
 
                     -- Second read completes → capture LSB

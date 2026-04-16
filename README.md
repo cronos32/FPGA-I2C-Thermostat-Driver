@@ -146,7 +146,7 @@ flowchart TD
 
 ### Diagram of final design
 
-![Diagram of final design](thermostat_top_diagram.png)
+![Diagram of final design](img/thermostat_top_diagram.png)
 
 ## VHDL FSM diagrams
 
@@ -205,18 +205,15 @@ stateDiagram-v2
 ## Simulations
 
 [tb_adt7420_driver.vhd](thermostat/thermostat.srcs/sim_1/new/tb_adt7420_driver.vhd)
-[tb_debounce.vhd](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
-[tb_display_data_combiner.vhd](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
+[tb_debounce.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
+[tb_display_data_combiner.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
 [tb_i2c_master.vhd](thermostat/thermostat.srcs/sim_1/new/tb_i2c_master.vhd)
 [tb_temp_regulator.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_temp_regulator.vhd)
 [tb_thermostat_top.vhd](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
-[tb_ui_fsm.vhd](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
-
->[NOTE]
->missing:
->tb_display_driver
->tb_bin2seg
->tb_counter
->tb_clk_en
+[tb_ui_fsm.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
+[tb_bin2seg✅](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
+[tb_clk_en✅](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
+[tb_counter](thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd)
+[tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
 
 ## References
