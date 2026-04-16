@@ -91,7 +91,7 @@ architecture Behavioral of thermostat_top is
             reset       : in  STD_LOGIC;
             btn_up      : in  STD_LOGIC;
             btn_down    : in  STD_LOGIC;
-            teplota_out : out STD_LOGIC_VECTOR(11 downto 0)
+            temp_out    : out STD_LOGIC_VECTOR(11 downto 0)
         );
     end component ui_fsm;
 
@@ -106,15 +106,15 @@ architecture Behavioral of thermostat_top is
     signal sig_display_data : std_logic_vector (31 downto 0); --xxxCxxxC
     signal sig_dp    : std_logic_vector(7 downto 0):= "10111011";  -- decimal points "10111011"
     
-    signal set_temp_slv  : std_logic_vector(11 downto 0);
-    signal set_temp     : unsigned(11 downto 0);
+    signal sig_set_temp_slv  : std_logic_vector(11 downto 0);
+    signal sig_set_temp     : unsigned(11 downto 0);
 
-    signal current_temp : unsigned(11 downto 0);
+    signal sig_current_temp : unsigned(11 downto 0);
     signal sig_current_temp_int : integer;
 
 begin
 
-    set_temp <= unsigned(set_temp_slv);
+    sig_set_temp <= unsigned(sig_set_temp_slv);
 
   
     -- Convert sensor integer to unsigned(11:0) with clamp
@@ -122,11 +122,11 @@ begin
     begin
         if rising_edge(clk) then
             if sig_current_temp_int < 0 then
-                current_temp <= (others => '0');
+                sig_current_temp <= (others => '0');
             elsif sig_current_temp_int > 4095 then
-                current_temp <= (others => '1');
+                sig_current_temp <= (others => '1');
             else
-                current_temp <= to_unsigned(sig_current_temp_int, 12);
+                sig_current_temp <= to_unsigned(sig_current_temp_int, 12);
             end if;
         end if;
     end process;
@@ -138,7 +138,7 @@ begin
             reset       => btnc,
             btn_up      => btnu,
             btn_down    => btnd,
-            teplota_out => set_temp_slv
+            temp_out    => sig_set_temp_slv
         );
 
     temp_sensor : adt7420_driver
@@ -152,26 +152,26 @@ begin
 
     display_0 : display_driver
     port map (
-        clk => clk,
-        rst => btnc,
-        data => sig_display_data,
-        dp_en => sig_dp,
-        seg => seg,
-        anode => an(7 downto 0),
-        dp => dp
+        clk     => clk,
+        rst     => btnc,
+        data    => sig_display_data,
+        dp_en   => sig_dp,
+        seg     => seg,
+        anode   => an(7 downto 0),
+        dp      => dp
     );
     
     combiner_0 : display_data_combiner
     port map(
-        set_temp     => set_temp,
-        current_temp => current_temp,
+        set_temp     => sig_set_temp,
+        current_temp => sig_current_temp,
         data_out     => sig_display_data
     );
     
     regulator_0 : temp_regulator
     port map(
-        set_temp     => set_temp,
-        current_temp => current_temp,
+        set_temp     => sig_set_temp,
+        current_temp => sig_current_temp,
 
         led_red      => led16_r,
         led_blue     => led16_b,
