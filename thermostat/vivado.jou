@@ -1,0 +1,37 @@
+#-----------------------------------------------------------
+# Vivado v2025.2 (64-bit)
+# SW Build 6299465 on Fri Nov 14 19:35:11 GMT 2025
+# IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+# SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+# Start of session at: Thu Apr 16 14:58:33 2026
+# Process ID         : 6408
+# Current directory  : C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat
+# Command line       : vivado.exe -gui_launcher_event rodinguilauncherevent30748 C:\Users\asus1\Documents\GitHub\FPGA-I2C-Thermostat-Driver\thermostat\thermostat.xpr
+# Log file           : C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/vivado.log
+# Journal file       : C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat\vivado.jou
+# Running On         : Dell-Latitude-7389-ZH
+# Platform           : Windows Server 2016 or Windows 10
+# Operating System   : 19045
+# Processor Detail   : Intel(R) Core(TM) i5-7200U CPU @ 2.50GHz
+# CPU Frequency      : 2712 MHz
+# CPU Physical cores : 2
+# CPU Logical cores  : 4
+# Host memory        : 8446 MB
+# Swap memory        : 22908 MB
+# Total Virtual      : 31355 MB
+# Available Virtual  : 7335 MB
+#-----------------------------------------------------------
+start_gui
+open_project C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.xpr
+update_compile_order -fileset sources_1
+set_property SOURCE_SET sources_1 [get_filesets sim_1]
+close [ open C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd w ]
+add_files -fileset sim_1 C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd
+close [ open C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd w ]
+add_files -fileset sim_1 C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd
+close [ open C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd w ]
+add_files -fileset sim_1 C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd
+close [ open C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd w ]
+add_files -fileset sim_1 C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd
+update_compile_order -fileset sim_1
+reset_project
