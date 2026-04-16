@@ -2,12 +2,12 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;  -- Required for "to_unsigned"
 
-entity tb_segment is
-end tb_segment;
+entity tb_bin2seg is
+end tb_bin2seg;
 
-architecture tb of tb_segment is
+architecture tb of tb_bin2seg is
 
-    component segment
+    component bin2seg
         port (bin : in std_logic_vector (3 downto 0);
               seg : out std_logic_vector (6 downto 0));
     end component;

@@ -146,7 +146,7 @@ flowchart TD
 
 ### Diagram of final design
 
-![Diagram of final design](thermostat_top_diagram.png)
+![Diagram of final design](img/thermostat_top_diagram.png)
 
 ## VHDL FSM diagrams
 
