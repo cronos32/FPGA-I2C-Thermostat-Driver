@@ -2,103 +2,83 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity tb_thermostat_top is
-end tb_thermostat_top;
+entity tb_ui_fsm is
+end tb_ui_fsm;
 
-architecture tb of tb_thermostat_top is
+architecture tb of tb_ui_fsm is
 
-    component thermostat_top
-        port (clk     : in std_logic;
-              btnu    : in std_logic;
-              btnd    : in std_logic;
-              btnc    : in std_logic;
-              seg     : out std_logic_vector (6 downto 0);
-              dp      : out std_logic;
-              an      : out std_logic_vector (7 downto 0);
-              led16_r : out std_logic;
-              led16_g : out std_logic;
-              led16_b : out std_logic;
-              TMP_SDA : inout std_logic;
-              TMP_SCL : inout std_logic);
+    component ui_fsm
+        port (clk      : in  std_logic;
+              reset    : in  std_logic;
+              btn_up   : in  std_logic;
+              btn_down : in  std_logic;
+              temp_out : out std_logic_vector (11 downto 0));
     end component;
 
-    signal clk     : std_logic := '0';
-    signal btnu    : std_logic := '0';
-    signal btnd    : std_logic := '0';
-    signal btnc    : std_logic := '0';
-    signal seg     : std_logic_vector (6 downto 0);
-    signal dp      : std_logic;
-    signal an      : std_logic_vector (7 downto 0);
-    signal led16_r : std_logic;
-    signal led16_g : std_logic;
-    signal led16_b : std_logic;
-    signal TMP_SDA : std_logic := 'Z';
-    signal TMP_SCL : std_logic := 'Z';
+    signal clk      : std_logic := '0';
+    signal reset    : std_logic;
+    signal btn_up   : std_logic := '0';
+    signal btn_down : std_logic := '0';
+    signal temp_out : std_logic_vector (11 downto 0);
 
     constant TbPeriod : time := 10 ns; -- 100 MHz
     signal TbSimEnded : std_logic := '0';
 
 begin
-    -- I2C Pull-upy
-    TMP_SDA <= 'H';
-    TMP_SCL <= 'H';
 
-    dut : thermostat_top
-    port map (clk     => clk,
-              btnu    => btnu,
-              btnd    => btnd,
-              btnc    => btnc,
-              seg     => seg,
-              dp      => dp,
-              an      => an,
-              led16_r => led16_r,
-              led16_g => led16_g,
-              led16_b => led16_b,
-              TMP_SDA => TMP_SDA,
-              TMP_SCL => TMP_SCL);
+    dut : ui_fsm
+    port map (clk      => clk,
+              reset    => reset,
+              btn_up   => btn_up,
+              btn_down => btn_down,
+              temp_out => temp_out);
 
-    -- Clock generation
     clk <= not clk after TbPeriod/2 when TbSimEnded /= '1' else '0';
-
-    -----------------------------------------------------------
-    -- Simulace I2C senzoru (odpovídá Masterovi)
-    -----------------------------------------------------------
-    p_sensor_model : process
-    begin
-        wait until falling_edge(TMP_SDA) and TMP_SCL /= '0'; -- START
-        for i in 1 to 9 loop wait until falling_edge(TMP_SCL); end loop;
-        TMP_SDA <= '0'; wait until rising_edge(TMP_SCL); wait until falling_edge(TMP_SCL); TMP_SDA <= 'Z'; -- ACK
-        
-        -- Master bude chtít číst data, senzor by měl něco poslat (např. 0x09 0x60 = 24.0°C)
-        -- Pro zjednodušení v TB jen posíláme ACK, Master si přečte '1' (vysoká impedance)
-        for i in 1 to 9 loop wait until falling_edge(TMP_SCL); end loop;
-        TMP_SDA <= '0'; wait until rising_edge(TMP_SCL); wait until falling_edge(TMP_SCL); TMP_SDA <= 'Z'; -- ACK
-    end process;
 
     stimuli : process
     begin
-        -- 1. Reset (středové tlačítko BTNC)
-        btnc <= '1';
+        -- 1. Reset and Initialization Check
+        reset <= '1';
         wait for 100 ns;
-        btnc <= '0';
-        wait for 1 us;
+        reset <= '0';
+        wait for 10 ns; -- Delta cycle settle
+        
+        -- Default should be 22.0 C (220 decimal = x"0DC")
+        assert (unsigned(temp_out) = 220) 
+            report "Initial temperature mismatch! Expected 220." severity error;
 
-        -- 2. Simulace stisku BTNU (Zvýšení nastavené teploty)
-        -- Protože v UI FSM máš pravděpodobně debouncer, musíme držet tlačítko déle
-        btnu <= '1';
-        wait for 20 ms; 
-        btnu <= '0';
-        wait for 20 ms;
+        -- 2. Simulate SINGLE UP Press
+        -- Debounce takes ~8ms, CE (Clock Enable) fires every 100ms.
+        -- To trigger EXACTLY ONE update, we hold for more than 8ms but less than 100ms.
+        btn_up <= '1';
+        wait for 50 ms; 
+        btn_up <= '0';
+        
+        -- Wait for the 100ms CE window to pass so the change is latched
+        wait for 150 ms;
+        assert (unsigned(temp_out) = 225) 
+            report "UP press failed! Expected 225 (+0.5C)." severity error;
 
-        -- 3. Simulace stisku BTND (Snížení nastavené teploty)
-        btnd <= '1';
-        wait for 20 ms;
-        btnd <= '0';
-        wait for 20 ms;
+        -- 3. Simulate SINGLE DOWN Press
+        btn_down <= '1';
+        wait for 50 ms;
+        btn_down <= '0';
 
-        -- Počkáme na výsledek regulace a zobrazení
+        wait for 150 ms;
+        assert (unsigned(temp_out) = 220) 
+            report "DOWN press failed! Expected return to 220." severity error;
+
+        -- 4. Simulate AUTO-INCREMENT (Hold for 300ms)
+        -- This should trigger 3 increments (+1.5C)
+        btn_up <= '1';
+        wait for 350 ms; -- 3 full CE periods
+        btn_up <= '0';
+        
         wait for 100 ms;
+        assert (unsigned(temp_out) = 235) 
+            report "Auto-increment failed! Expected 235." severity error;
 
+        report "UI FSM Simulation Complete.";
         TbSimEnded <= '1';
         wait;
     end process;

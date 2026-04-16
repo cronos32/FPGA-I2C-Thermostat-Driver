@@ -6,7 +6,6 @@ end tb_debounce;
 
 architecture tb of tb_debounce is
 
-    -- Komponenta musí přesně odpovídat tvé entitě
     component debounce
         port (clk       : in std_logic;
               rst       : in std_logic;
@@ -21,14 +20,12 @@ architecture tb of tb_debounce is
     signal btn_state : std_logic;
     signal btn_press : std_logic;
 
-    -- Nastavení na 100 MHz (standard pro FPGA desky)
-    constant TbPeriod : time := 10 ns; 
-    signal TbClock : std_logic := '0';
+    constant TbPeriod : time := 10 ns; -- 100 MHz
+    signal TbClock    : std_logic := '0';
     signal TbSimEnded : std_logic := '0';
 
 begin
 
-    -- Instance testovaného obvodu (UUT/DUT)
     dut : debounce
     port map (clk       => clk,
               rst       => rst,
@@ -36,44 +33,46 @@ begin
               btn_state => btn_state,
               btn_press => btn_press);
 
-    -- Generování hodin
+    -- Clock generation with proper stop condition
     TbClock <= not TbClock after TbPeriod/2 when TbSimEnded /= '1' else '0';
     clk <= TbClock;
 
-    -- Stimuli proces: simulace stisku tlačítka se zákmity
     stimuli : process
     begin
-        -- 1. Inicializace a Reset
+        -- 1. Initialization
         btn_in <= '0';
         rst <= '1';
         wait for 100 ns;
         rst <= '0';
-        wait for 100 ns;
+        wait for 1 ms; -- Stabilize
 
-        -- 2. Simulace ZÁKMYTŮ (tlačítko "poskakuje" při stisku)
-        wait for 100 ns;
-        btn_in <= '1';
-        wait for 50 ns;
-        btn_in <= '0';
-        wait for 50 ns;
-        btn_in <= '1';
-        wait for 250 ns;
-        btn_in <= '0'; 
+        -- 2. Simulate REALISTIC Bouncing (Transitions shorter than 8ms)
+        -- These pulses are ~500us. Since sampling is every 2ms, 
+        -- btn_state should NOT change here.
+        btn_in <= '1'; wait for 500 us;
+        btn_in <= '0'; wait for 300 us;
+        btn_in <= '1'; wait for 800 us;
+        btn_in <= '0'; wait for 400 us;
 
-        -- 3. DLOUHÝ STISK (musí překonat 4 vzorky po 2 ms = 8 ms)
+        -- 3. VALID PRESS (Stable for > 8 ms)
+        -- We wait 20ms to ensure 4 samples are captured.
         btn_in <= '1';
-        wait for 20 ms; -- Rezerva, aby debouncer stihl zareagovat
+        wait for 20 ms; 
+        
+        -- At this point, btn_state should be '1' and btn_press should have pulsed.
 
-        -- 4. Simulace uvolnění tlačítka (opět se zákmity)
-        btn_in <= '0'; wait for 100 us;
-        btn_in <= '1'; wait for 100 us;
+        -- 4. VALID RELEASE with Bouncing
+        -- Again, small bounces shouldn't trigger a state change until stable.
+        btn_in <= '0'; wait for 1 ms;
+        btn_in <= '1'; wait for 1 ms;
         btn_in <= '0'; 
         
-        -- Počkáme, až obvod vyhodnotí klidový stav
+        -- Wait for the debouncer to confirm release
         wait for 20 ms;
 
-        -- Ukončení simulace
+        -- End simulation
         TbSimEnded <= '1';
+        report "Simulation Finished Successfully";
         wait;
     end process;
 
