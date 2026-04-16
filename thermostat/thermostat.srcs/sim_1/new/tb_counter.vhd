@@ -7,6 +7,9 @@ end tb_counter;
 architecture tb of tb_counter is
 
     component counter
+    generic (
+        G_BITS : positive := 3  --! Default number of bits
+    );
         port (clk : in std_logic;
               rst : in std_logic;
               en  : in std_logic;
@@ -25,6 +28,7 @@ architecture tb of tb_counter is
 begin
 
     dut : counter
+    generic ( G_BITS : positive );
     port map (clk => clk,
               rst => rst,
               en  => en,
