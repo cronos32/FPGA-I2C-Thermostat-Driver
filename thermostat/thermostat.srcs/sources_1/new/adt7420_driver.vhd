@@ -31,17 +31,6 @@ architecture rtl of adt7420_driver is
 
 begin
 
-    -- 1. Extract the 13 bits
-    raw_13bit <= signed(cap_msb & cap_lsb(7 downto 3));
-
-    -- 2. Multiply 13-bit signal by a 13-bit constant (625 fits in 10 bits, so 13 is safe)
-    -- 13 bits * 13 bits = exactly 26 bits. No 64-bit expansion!
-    product_26 <= raw_13bit * to_signed(625, 13);
-
-    -- 3. Convert the 26-bit result to integer and divide by 1000
-    temp_10x <= to_integer(product_26) / 1000;
-    --temp_10x  <= to_integer(product) / 1000;
-
     I2C_INST: entity work.i2c_master
         port map (
             clk          => clk,
@@ -60,6 +49,8 @@ begin
 
     process(clk)
     begin
+    -- Ostatní product_26 atd. už nebudete potřebovat
+
         if rising_edge(clk) then
             m_start <= '0';  -- default: no pulse
 
@@ -127,9 +118,15 @@ begin
                         end if;
 
                     -- Second read completes → capture LSB
-                    when CALC =>
-                        state <= WAIT_1S;
 
+                -- ... v procesu ...
+                    when CALC =>
+                        -- Použijeme trik s 5/8. 
+                        -- Násobení 5 je bleskové a dělení 8 je jen shift.
+                        -- Hodnota se uloží do registru temp_10x při dalším taktu.
+                        temp_10x <= to_integer(raw_13bit * 5) / 8; 
+                        state <= WAIT_1S;
+                        
                     when others => state <= WAIT_1S;
                 end case;
             end if;
