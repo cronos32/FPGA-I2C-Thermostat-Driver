@@ -211,7 +211,7 @@ stateDiagram-v2
 [tb_temp_regulator.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_temp_regulator.vhd)
 [tb_thermostat_top.vhd](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
 [tb_ui_fsm.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
-[tb_bin2seg](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
+[tb_bin2seg✅](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
 [tb_clk_en✅](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
 [tb_counter](thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd)
 [tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
