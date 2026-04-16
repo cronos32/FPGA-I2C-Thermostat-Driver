@@ -27,7 +27,7 @@ architecture tb of tb_i2c_master is
     signal addr         : std_logic_vector(6 downto 0);
     signal rw           : std_logic;
     signal data_in      : std_logic_vector(7 downto 0);
-    signal data_out     : out std_logic_vector(7 downto 0);
+    signal data_out     : std_logic_vector(7 downto 0);
     signal start        : std_logic := '0';
     signal stop_on_done : std_logic := '0';
     signal busy, nack    : std_logic;
