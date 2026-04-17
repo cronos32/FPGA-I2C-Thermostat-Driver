@@ -204,16 +204,48 @@ stateDiagram-v2
 
 ## Simulations
 
-[tb_adt7420_driver.vhd](thermostat/thermostat.srcs/sim_1/new/tb_adt7420_driver.vhd)
-[tb_debounce.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
-[tb_display_data_combiner.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
-[tb_i2c_master.vhd](thermostat/thermostat.srcs/sim_1/new/tb_i2c_master.vhd)
-[tb_temp_regulator.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_temp_regulator.vhd)
-[tb_thermostat_top.vhd](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
-[tb_ui_fsm.vhd✅](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
-[tb_bin2seg✅](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
-[tb_clk_en✅](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
-[tb_counter](thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd)
+![tb_clk_en-img](img/tb_img/tb_clk_en.png)
+[tb_clk_en](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
+
+---
+
+[tb_bin2seg](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
+
+---
+
+![tb_debounce-img](img/tb_img/tb_debounce.png)
+[tb_debounce](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
+
+---
+
+![tb_display_data_combiner-img](img/tb_img/tb_display_data_combiner.png)
+[tb_display_data_combiner](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
+
+---
+
+![tb_temp_regulator-img](img/tb_img/tb_temp_regulator.png)
+[tb_temp_regulator](thermostat/thermostat.srcs/sim_1/new/tb_temp_regulator.vhd)
+
+---
+
+![tb_ui_fsm-img](img/tb_img/tb_ui_fsm.png)
+[tb_ui_fsm](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
+
+---
+
 [tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
+[tb_counter](thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd)
+
+---
+
+[tb_adt7420_driver.vhd](thermostat/thermostat.srcs/sim_1/new/tb_adt7420_driver.vhd)
+[tb_i2c_master.vhd](thermostat/thermostat.srcs/sim_1/new/tb_i2c_master.vhd)
+
+X[tb_thermostat_top.vhd](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)X
+
+
+
+
+
 
 ## References
