@@ -7,7 +7,7 @@ end tb_display_driver;
 
 architecture tb of tb_display_driver is
 
-    -- Component declaration matching the actual entity
+    -- Component declaration
     component display_driver
         port (
             rst   : in  std_logic;
@@ -34,7 +34,8 @@ architecture tb of tb_display_driver is
 
 begin
 
-    -- Instance of the Device Under Test (DUT)
+    -- Device Under Test (DUT)
+    -- IMPORTANT: In your display_driver.vhd, change G_MAX to 10 for simulation!
     dut : display_driver
     port map (
         clk   => clk,
@@ -54,32 +55,30 @@ begin
     begin
         -- 1. Reset Phase
         rst <= '1';
-        data <= (others => '0');
-        dp_en <= (others => '0');
+        data <= x"00000000";
+        dp_en <= "00000000";
         wait for 100 ns;
         rst <= '0';
-        wait for 100 ns;
+        wait for 50 ns;
 
-        -- 2. Load test data (Displaying 0x12345678)
-        -- Digit 0 will be '8', Digit 7 will be '1'
+        -- 2. Test Data: Displaying "1234.5678"
+        -- We set data to hex values and enable one decimal point (dp)
         data  <= x"12345678"; 
-        dp_en <= "10000001"; -- Turn on decimal points for first and last digit
+        dp_en <= "00010000"; -- Decimal point on the 5th digit (index 4)
         
-        -- 3. Observation Phase
-        -- We need to wait long enough for the multiplexer to cycle through digits.
-        -- Note: If G_MAX is 800,000, each digit takes 8ms. 
-        -- To see all 8 digits in simulation, you'd need to wait > 64ms.
-        -- RECOMMENDATION: Change G_MAX to 32 in your code for faster simulation!
-        
-        wait for 1 ms; -- Adjust this based on your G_MAX value
+        -- 3. Observation
+        -- If G_MAX is set to 10 in the driver, each digit switches every 100ns.
+        -- We wait 2000ns to see several full cycles of all 8 digits.
+        wait for 2000 ns;
 
-        -- 4. Change data
+        -- 4. Change data to check Hex decoding (A, B, C...)
         data <= x"ABCDEF00";
-        wait for 1 ms;
+        dp_en <= "11111111"; -- All decimal points on
+        wait for 2000 ns;
 
         -- End simulation
-        report "Simulation finished. Check waveforms for anode/segment switching.";
         TbSimEnded <= '1';
+        report "Simulation finished successfully.";
         wait;
     end process;
 

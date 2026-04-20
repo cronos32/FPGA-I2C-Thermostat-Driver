@@ -17,7 +17,7 @@ architecture tb of tb_bin2seg is
 
 begin
 
-    dut : segment
+    dut : bin2seg
     port map (bin => bin,
               seg => seg);
 
