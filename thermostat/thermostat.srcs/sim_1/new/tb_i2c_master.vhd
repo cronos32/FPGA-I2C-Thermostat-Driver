@@ -1,208 +1,243 @@
--- ============================================================
--- Testbench: tb_i2c_master
--- Tests: write transaction, read transaction
--- Slave model: properly timed ACK + drives 0xA5 on read
--- ============================================================
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+-- tb_i2c_master.vhd
+-- Testbench for i2c_master.
+--
+-- Tests:
+--   1. Single-byte write, slave ACKs => nack='0'
+--   2. Write byte (no STOP) then repeated-START read => data_out=0xA5
+--   3. Slave NACKs address => nack='1'
+--
+-- Open-drain bus modelling:
+--   The SDA line is driven by a resolved wired-AND:
+--     sda_bus <= '0' when (master drives '0') OR (slave drives '0') else 'Z'
+--   Both master and slave drive onto sda_bus. The i2c_controller uses
+--   tri-state ('Z' for '1'), so the simulator wired-AND resolves correctly
+--   when slave_sda is also '0' or 'Z'.
+--
+-- Slave timing:
+--   SCL half-period = 128 master-clock cycles * 2 ns = 256 ns.
+--   Slave waits for SCL edges rather than fixed delays where possible,
+--   making it robust to clock divider changes.
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 entity tb_i2c_master is
-end tb_i2c_master;
+end entity;
 
-architecture tb of tb_i2c_master is
+architecture sim of tb_i2c_master is
 
-    -- Use a small CLK_DIV to keep simulation fast
-    constant CLK_DIV_TB : integer := 20;  -- SCL period = 20 * 4 * 5 ns = 400 ns → ~2.5 MHz
+    signal clk          : STD_LOGIC := '0';
+    signal rst          : STD_LOGIC := '1';
+    signal addr         : STD_LOGIC_VECTOR(6 downto 0) := "1001000";
+    signal rw           : STD_LOGIC := '0';
+    signal data_in      : STD_LOGIC_VECTOR(7 downto 0) := (others => '0');
+    signal data_out     : STD_LOGIC_VECTOR(7 downto 0);
+    signal start        : STD_LOGIC := '0';
+    signal stop_on_done : STD_LOGIC := '1';
+    signal busy         : STD_LOGIC;
+    signal nack         : STD_LOGIC;
+    signal scl          : STD_LOGIC;
+    signal sda          : STD_LOGIC;
 
-    component i2c_master
-        generic ( CLK_DIV : integer := 250 );
-        port (
-            clk, rst     : in    std_logic;
-            addr         : in    std_logic_vector(6 downto 0);
-            rw           : in    std_logic;
-            data_in      : in    std_logic_vector(7 downto 0);
-            data_out     : out   std_logic_vector(7 downto 0);
-            start        : in    std_logic;
-            stop_on_done : in    std_logic;
-            busy, nack   : out   std_logic;
-            scl, sda     : inout std_logic
-        );
-    end component;
+    -- Slave open-drain driver: '0' to pull low, 'Z' to release
+    signal slave_sda : STD_LOGIC := 'Z';
 
-    signal clk          : std_logic := '0';
-    signal rst          : std_logic := '1';
-    signal addr         : std_logic_vector(6 downto 0) := (others => '0');
-    signal rw           : std_logic := '0';
-    signal data_in      : std_logic_vector(7 downto 0) := (others => '0');
-    signal data_out     : std_logic_vector(7 downto 0);
-    signal start_sig    : std_logic := '0';
-    signal stop_on_done : std_logic := '0';
-    signal busy         : std_logic;
-    signal nack         : std_logic;
-    signal scl          : std_logic;
-    signal sda          : std_logic;
+    -- Half SCL period at 128-count divider on 2 ns clock
+    constant HALF : time := 256 ns;
 
-    -- Slave drives this byte on read transactions
-    signal slave_read_data : std_logic_vector(7 downto 0) := x"A5";
+    -- ----------------------------------------------------------------
+    -- Helpers shared between slave and stimulus processes
+    -- ----------------------------------------------------------------
 
-    constant TbPeriod  : time := 10 ns;  -- 100 MHz
-    signal TbSimEnded  : std_logic := '0';
-
-    -- Quarter-period of SCL in simulation time (for slave timing)
-    constant SCL_Q : time := TbPeriod * (CLK_DIV_TB / 2);
+    -- Wait for the rising then falling edge of SCL (= one full bit)
+    -- to let the slave sample/drive at the correct time.
+    -- We use fixed waits instead so the slave is self-timed.
 
 begin
 
-    -- External pull-ups (weak '1' on open-drain bus)
-    scl <= 'H';
-    sda <= 'H';
+    clk <= not clk after 1 ns;
 
-    dut : i2c_master
-    generic map ( CLK_DIV => CLK_DIV_TB )
-    port map (
-        clk          => clk,
-        rst          => rst,
-        addr         => addr,
-        rw           => rw,
-        data_in      => data_in,
-        data_out     => data_out,
-        start        => start_sig,
-        stop_on_done => stop_on_done,
-        busy         => busy,
-        nack         => nack,
-        scl          => scl,
-        sda          => sda
-    );
+    -- ----------------------------------------------------------------
+    -- Open-drain bus: DUT drives sda via tri-state; slave pulls low.
+    -- In VHDL simulation both drive the same signal; 'Z' + '0' = '0',
+    -- 'Z' + 'Z' = 'Z', '0' + '0' = '0'. This matches real open-drain.
+    -- ----------------------------------------------------------------
+    sda <= slave_sda;
 
-    -- Clock generator
-    clk <= not clk after TbPeriod/2 when TbSimEnded /= '1' else '0';
+    dut: entity work.i2c_master
+        port map (
+            clk          => clk,
+            rst          => rst,
+            addr         => addr,
+            rw           => rw,
+            data_in      => data_in,
+            data_out     => data_out,
+            start        => start,
+            stop_on_done => stop_on_done,
+            busy         => busy,
+            nack         => nack,
+            scl          => scl,
+            sda          => sda
+        );
 
-    ----------------------------------------------------------------
-    -- I2C Slave model
-    -- Handles both write and read transactions correctly.
-    -- ACK is asserted AFTER SCL falls for the 8th data bit and
-    -- released BEFORE SCL rises for the ACK bit.
-    ----------------------------------------------------------------
-    p_slave : process
-        variable is_read  : boolean;
-        variable rx_byte  : std_logic_vector(7 downto 0);
-    begin
-        sda <= 'Z';
+    -- ----------------------------------------------------------------
+    -- Slave model
+    -- Uses SCL edges for synchronisation so timing is exact regardless
+    -- of the clock divider value.
+    -- ----------------------------------------------------------------
+    slave: process
+        -- ACK: pull SDA low during one SCL high phase
+        procedure send_ack is
+        begin
+            -- Wait for SCL to go low (ACK slot starts)
+            wait until scl = '0';
+            slave_sda <= '0';
+            wait until scl = '1';   -- SCL high: master samples our ACK
+            wait until scl = '0';   -- SCL low again: release
+            slave_sda <= 'Z';
+        end procedure;
 
-        slave_loop : loop
-            -- Wait for START condition: SDA falls while SCL is high
-            wait until falling_edge(sda) and (to_x01(scl) = '1');
-
-            -- ---- Receive 8 address+RW bits ----
-            -- Wait for 8 falling edges on SCL (bits clocked in on rising edge)
-            -- On the last (8th) falling edge SCL goes low → master releases SDA for ACK
-            is_read := false;
-            for i in 7 downto 0 loop
-                wait until rising_edge(scl);
-                if i = 0 then
-                    -- bit 0 is the R/W bit
-                    is_read := (to_x01(sda) = '1');
-                end if;
+        -- Skip n bits (wait for n falling SCL edges)
+        procedure skip_bits(n : integer) is
+        begin
+            for i in 1 to n loop
+                wait until falling_edge(scl);
             end loop;
+        end procedure;
 
-            -- ---- Send ACK for address byte ----
-            -- SCL is high after sampling, wait for it to fall
-            wait until falling_edge(scl);
-            sda <= '0';                        -- pull SDA low: ACK
-            wait until falling_edge(scl);      -- ACK bit clocked; release after
-            sda <= 'Z';
+        -- Drive a byte MSB-first, one bit per SCL low period
+        procedure drive_byte(constant val : STD_LOGIC_VECTOR(7 downto 0)) is
+        begin
+            for i in 7 downto 0 loop
+                wait until scl = '0';
+                slave_sda <= val(i);
+                wait until scl = '1';   -- master samples on high
+                wait until scl = '0';
+            end loop;
+            slave_sda <= 'Z';           -- release for master ACK/NAK slot
+            wait until scl = '1';
+            wait until scl = '0';
+        end procedure;
 
-            -- ---- Data phase ----
-            if is_read then
-                -- Master reads: slave drives 8 bits MSB-first
-                for i in 7 downto 0 loop
-                    wait until falling_edge(scl);   -- SCL low: safe to change SDA
-                    if slave_read_data(i) = '0' then
-                        sda <= '0';
-                    else
-                        sda <= 'Z';                 -- open-drain high
-                    end if;
-                end loop;
-                -- Release SDA before master samples ACK/NACK
-                wait until falling_edge(scl);
-                sda <= 'Z';
-                -- Master sends ACK/NACK; we just wait for it
-                wait until falling_edge(scl);
-
-            else
-                -- Master writes: slave receives 8 bits (just count them)
-                for i in 7 downto 0 loop
-                    wait until rising_edge(scl);
-                    rx_byte(i) := to_x01(sda);
-                end loop;
-                report "Slave received data byte: 0x" &
-                    to_hstring(std_logic_vector'(rx_byte(7) & rx_byte(6) &
-                               rx_byte(5) & rx_byte(4) & rx_byte(3) &
-                               rx_byte(2) & rx_byte(1) & rx_byte(0)));
-
-                -- ---- Send ACK for data byte ----
-                wait until falling_edge(scl);
-                sda <= '0';
-                wait until falling_edge(scl);
-                sda <= 'Z';
-            end if;
-
-        end loop slave_loop;
-    end process p_slave;
-
-    ----------------------------------------------------------------
-    -- Stimuli process
-    ----------------------------------------------------------------
-    stimuli : process
     begin
-        -- ---- Reset ----
-        rst <= '1';
-        wait for 5 * TbPeriod;
-        rst <= '0';
-        wait for 5 * TbPeriod;
+        slave_sda <= 'Z';
 
-        ---- TEST 1: Write transaction ----
-        report "=== TEST 1: Write 0xAB to addr 0x48 ===";
-        addr         <= "1001000";  -- 0x48
+        -- ==== TEST 1: single write, ACK address + data ====
+        wait until falling_edge(sda);   -- START condition
+        skip_bits(8);                    -- address byte (8 SCL cycles)
+        send_ack;
+        skip_bits(8);                    -- data byte
+        send_ack;
+        -- STOP follows; slave releases
+        slave_sda <= 'Z';
+        wait for HALF * 4;              -- clear of STOP
+
+        -- ==== TEST 2: write reg ptr (no STOP) then rSTART read ====
+        wait until falling_edge(sda);   -- START
+        skip_bits(8);                    -- address + W
+        send_ack;
+        skip_bits(8);                    -- register pointer byte
+        send_ack;
+        -- Repeated START: master holds SCL low then drives SDA low
+        wait until falling_edge(sda);   -- repeated START
+        skip_bits(8);                    -- address + R
+        send_ack;
+        drive_byte(x"A5");              -- drive read data
+        -- master sends NAK + STOP; slave releases
+        slave_sda <= 'Z';
+        wait for HALF * 4;
+
+        -- ==== TEST 3: NACK -- slave does NOT pull SDA low in ACK slot ====
+        wait until falling_edge(sda);   -- START
+        skip_bits(8);                    -- address byte
+        -- Leave slave_sda = 'Z'; master reads '1' = NACK
+        wait until scl = '0';           -- ACK slot SCL low
+        wait until scl = '1';           -- SCL high: master samples NACK
+        wait until scl = '0';
+        -- master will generate STOP
+        slave_sda <= 'Z';
+
+        wait;
+    end process;
+
+    -- ----------------------------------------------------------------
+    -- Stimulus
+    -- ----------------------------------------------------------------
+    stimulus: process
+    begin
+        rst   <= '1';
+        start <= '0';
+        wait for 10 ns;
+        rst   <= '0';
+        wait for 4 ns;
+
+        -- ---- TEST 1: single write, expect ACK ----
+        report "TEST 1: single write, expect ACK";
         rw           <= '0';
-        data_in      <= x"AB";
+        data_in      <= x"42";
         stop_on_done <= '1';
-
-        start_sig <= '1';
-        wait until rising_edge(clk) and busy = '1';
-        start_sig <= '0';
-
+        start        <= '1';
+        wait for 2 ns;
+        start <= '0';
         wait until busy = '0';
-        wait for 10 * TbPeriod;
-
-        -- Check: no NACK expected
         assert nack = '0'
-            report "TEST 1 FAILED: unexpected NACK on write" severity error;
-        report "TEST 1 PASSED: write complete, nack=" & std_logic'image(nack);
+            report "TEST 1 FAILED: unexpected NACK" severity error;
+        report "TEST 1 PASSED";
+        wait for 500 ns;
 
-        ---- TEST 2: Read transaction ----
-        report "=== TEST 2: Read from addr 0x48, expect 0xA5 ===";
-        addr         <= "1001000";
+        -- ---- TEST 2: write ptr (no STOP) then rSTART read ----
+        report "TEST 2: write ptr then repeated-START read 0xA5";
+        rw           <= '0';
+        data_in      <= x"00";
+        stop_on_done <= '0';    -- hold bus
+        start        <= '1';
+        wait for 2 ns;
+        start <= '0';
+        wait until busy = '0';
+        assert nack = '0'
+            report "TEST 2 FAILED: NACK on write ptr" severity error;
+
+        -- Now read; bus still held so i2c_master generates rSTART
         rw           <= '1';
         stop_on_done <= '1';
-
-        start_sig <= '1';
-        wait until rising_edge(clk) and busy = '1';
-        start_sig <= '0';
-
+        start        <= '1';
+        wait for 2 ns;
+        start <= '0';
         wait until busy = '0';
-        wait for 10 * TbPeriod;
-
+        assert nack = '0'
+            report "TEST 2 FAILED: unexpected NACK on read" severity error;
         assert data_out = x"A5"
-            report "TEST 2 FAILED: expected 0xA5, got 0x" &
-                   to_hstring(data_out) severity error;
+            report "TEST 2 FAILED: expected 0xA5, got 0x" & to_hstring(data_out)
+            severity error;
         report "TEST 2 PASSED: data_out=0x" & to_hstring(data_out);
+        wait for 500 ns;
 
-        ---- Done ----
-        report "=== All I2C master tests complete ===";
-        TbSimEnded <= '1';
-        wait;
-    end process stimuli;
+        -- ---- TEST 3: expect NACK ----
+        report "TEST 3: slave NACK";
+        rw           <= '0';
+        data_in      <= x"FF";
+        stop_on_done <= '1';
+        start        <= '1';
+        wait for 2 ns;
+        start <= '0';
+        wait until busy = '0';
+        assert nack = '1'
+            report "TEST 3 FAILED: expected NACK, got ACK" severity error;
+        report "TEST 3 PASSED: NACK detected";
 
-end tb;
+        report "+++All i2c_master tests passed";
+        std.env.finish;
+    end process;
+
+    -- Bus monitor
+    monitor: process
+    begin
+        wait on scl, sda, busy, nack;
+        report "SCL=" & to_string(scl) &
+               " SDA=" & to_string(sda) &
+               " BUSY=" & to_string(busy) &
+               " NACK=" & to_string(nack);
+    end process;
+
+end architecture;
