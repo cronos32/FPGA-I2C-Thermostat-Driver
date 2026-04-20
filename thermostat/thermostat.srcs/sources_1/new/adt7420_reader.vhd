@@ -1,37 +1,37 @@
 -- ADT7420 Temperature Sensor Reader
 -- Inspired by https://github.com/aslak3/i2c-controller
 --
--- Wraps the i2c_controller and provides periodic (~1 Hz) temperature
--- readings from an ADT7420 digital temperature sensor.
+-- Wraps the i2c_controller and performs periodic temperature readings
+-- from an ADT7420 digital temperature sensor over I2C.
 --
 -- Output `temperature` is a signed integer in tenths of a degree Celsius.
---   e.g.  22.1 C  ->   221
---         -5.3 C  ->   -53  (or -54, see conversion note)
---        125.0 C  ->  1250
+--   e.g.  22.1 C  ->   221  (0x00DD)
+--         -5.3 C  ->   -54  (0xFFCA)  -- see conversion note below
+--        125.0 C  ->  1250  (0x04E2)
 --
 -- Resolution is software-selectable via `resolution_16bit`:
 --   '0' = 13-bit ADC, 0.0625    C per LSB   (power-on default)
 --   '1' = 16-bit ADC, 0.0078125 C per LSB
--- Both modes are converted to the same tenths-of-degree output.
+-- Both modes are reduced to the same tenths-of-degree output.
 --
--- The underlying i2c_controller works one bus "byte" per `trigger` pulse,
--- where the very first byte of a transaction is always
--- {slave_address, R/W} (i.e. you do NOT supply it in write_data).  So a
--- full I2C write of N data bytes requires N+1 triggers, and a full read
--- of M data bytes preceded by a pointer-write requires 1 + 1 + 1 + M
+-- The underlying i2c_controller emits one I2C byte per `trigger` pulse,
+-- where the very first byte of any transaction is always
+-- {slave_address, R/W} -- the controller synthesises it internally and
+-- write_data is ignored for that byte.  So a write of N data bytes
+-- takes N+1 triggers, and a read transaction takes 1 + 1 + 1 + M
 -- triggers (addr+W, pointer, RESTART+addr+R, M reads).
 --
 -- Transaction layout for a temperature read (5 triggers):
---   T1  addr+W                                     (from controller.START1/2)
---   T2  pointer = 0x00                             (WRITE_WAITING -> WRITING_DATA)
---   T3  RESTART + addr+R                           (restart=1)
---   T4  read MSB, controller ACKs                  (last_byte=0)
---   T5  read LSB, controller NAKs + STOP           (last_byte=1)
+--   T1  addr + W
+--   T2  pointer = 0x00 (temperature MSB register)
+--   T3  RESTART + addr + R
+--   T4  read MSB, controller ACKs (last_byte=0)
+--   T5  read LSB, controller NAKs + STOP (last_byte=1)
 --
--- And for the one-time configuration write (3 triggers):
---   T1  addr+W
---   T2  pointer = 0x03
---   T3  value (last_byte=1 -> STOP)
+-- One-time configuration write at startup (3 triggers):
+--   T1  addr + W
+--   T2  pointer = 0x03 (config register)
+--   T3  config byte, last_byte=1 (STOP)
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -39,14 +39,14 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity adt7420_reader is
     generic (
-        -- Main clock frequency in Hz.  Used to derive the read interval.
-        CLOCK_FREQ_HZ    : integer := 50_000_000;
+        -- Main clock frequency in Hz. Used to derive the read interval.
+        CLOCK_FREQ_HZ    : integer := 100_000_000;
         -- Read interval in milliseconds (default 1000 ms = 1 Hz).
         READ_INTERVAL_MS : integer := 1000
     );
     port (
         clock            : in    STD_LOGIC;                       -- Master clock
-        reset            : in    STD_LOGIC;                       -- Master reset (active high)
+        reset            : in    STD_LOGIC;                       -- Active-high reset
 
         -- Configuration
         sensor_address   : in    STD_LOGIC_VECTOR (6 downto 0);   -- Typ. "1001000" (0x48)
@@ -54,8 +54,8 @@ entity adt7420_reader is
 
         -- Results
         temperature      : out   STD_LOGIC_VECTOR (15 downto 0);  -- Signed tenths of C
-        temp_valid       : out   STD_LOGIC;                       -- 1-cycle pulse on new reading
-        error            : out   STD_LOGIC;                       -- Sticky: any transaction NAKed
+        temp_valid       : out   STD_LOGIC;                       -- 1-cycle pulse per reading
+        error            : out   STD_LOGIC;                       -- Sticky: any byte NAKed
 
         -- I2C bus (open-drain / tri-state, needs external pull-ups)
         scl              : inout STD_LOGIC;
@@ -389,18 +389,19 @@ begin
     --
     -- 13-bit mode: upper 13 bits are the signed temperature code; the
     --              lower 3 bits are status flags.  LSB = 0.0625 C.
-    --              tenths = code13 * 0.625 = code13 * 10 / 16
-    --              implemented as (code13 * 10) >>> 4   (exact)
+    --              tenths = code13 * 10 / 16
     --
-    -- 16-bit mode: all 16 bits are the signed temperature code;
+    -- 16-bit mode: all 16 bits are the signed temperature code.
     --              LSB = 0.0078125 C.
-    --              tenths = code16 * 0.078125 = code16 * 10 / 128
-    --              implemented as (code16 * 10) >>> 7   (exact)
+    --              tenths = code16 * 10 / 128
     --
-    -- Note: arithmetic shift-right rounds toward -inf, so a negative
-    -- input like -85 (-5.3125 C, 13-bit) converts to -54 rather than
-    -- -53.  That's 0.1 C off in the last digit and well within sensor
-    -- tolerance.
+    -- We compute *10 as (x<<3)+(x<<1) to avoid a signed multiplier and
+    -- to keep the intermediate width at 32 bits (a direct signed*
+    -- to_signed(10,6) would produce a 37-bit result and blow up XSim).
+    --
+    -- Rounding note: arithmetic right-shift rounds toward -inf, so a
+    -- negative input like -85 (-5.3125 C, 13-bit) converts to -54
+    -- rather than -53. That's within the sensor's +/-0.25 C tolerance.
     ------------------------------------------------------------------
     conv_proc : process (reset, clock)
         variable raw16  : signed (15 downto 0);
@@ -413,11 +414,15 @@ begin
             if (state = S_RD_DONE) then
                 raw16 := signed(raw_msb & raw_lsb);
                 if (cfg_is_16bit = '1') then
-                    scaled := resize(raw16, 32) * to_signed(10, 6);
+                    -- (raw16 * 10) / 128    (*10 via shifts: x*8 + x*2)
+                    scaled := shift_left(resize(raw16, 32), 3)
+                            + shift_left(resize(raw16, 32), 1);
                     temperature_r <= resize(shift_right(scaled, 7), 16);
                 else
+                    -- Take top 13 bits sign-extended, then (*10)/16
                     code13 := shift_right(raw16, 3);
-                    scaled := resize(code13, 32) * to_signed(10, 6);
+                    scaled := shift_left(resize(code13, 32), 3)
+                            + shift_left(resize(code13, 32), 1);
                     temperature_r <= resize(shift_right(scaled, 4), 16);
                 end if;
             end if;

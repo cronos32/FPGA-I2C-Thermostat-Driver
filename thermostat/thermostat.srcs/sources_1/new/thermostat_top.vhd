@@ -95,13 +95,23 @@ architecture Behavioral of thermostat_top is
         );
     end component ui_fsm;
 
-    component adt7420_driver is
-        port (
-            clk, rst : in    std_logic;
-            temp_10x : out   integer range -10000 to 10000;
-            scl, sda : inout std_logic
+    component adt7420_reader is
+        generic (
+        CLOCK_FREQ_HZ    : integer;
+        READ_INTERVAL_MS : integer
         );
-    end component adt7420_driver;
+        port (
+            clock            : in    STD_LOGIC;                       -- Master clock
+            reset            : in    STD_LOGIC;                       -- Active-high reset
+            sensor_address   : in    STD_LOGIC_VECTOR (6 downto 0);   -- Typ. "1001000" (0x48)
+            resolution_16bit : in    STD_LOGIC;                       -- 0=13-bit, 1=16-bit
+            temperature      : out   STD_LOGIC_VECTOR (15 downto 0);  -- Signed tenths of C
+            temp_valid       : out   STD_LOGIC;                       -- 1-cycle pulse per reading
+            error            : out   STD_LOGIC;                       -- Sticky: any byte NAKed
+            scl              : inout STD_LOGIC;
+            sda              : inout STD_LOGIC
+        );
+    end component adt7420_reader;
     
     signal sig_display_data : std_logic_vector (31 downto 0); --xxxCxxxC
     signal sig_dp    : std_logic_vector(7 downto 0):= "10111011";  -- decimal points "10111011"
@@ -111,22 +121,29 @@ architecture Behavioral of thermostat_top is
 
     signal sig_current_temp : unsigned(11 downto 0);
     signal sig_current_temp_int : integer;
+    
+    -- Intermediate signal to hold the raw SLV from the reader
+    signal sig_temp_vector : std_logic_vector(15 downto 0);
+    signal sig_temp_valid  : std_logic;
 
 begin
-
+    
     sig_set_temp <= unsigned(sig_set_temp_slv);
-
-  
-    -- Convert sensor integer to unsigned(11:0) with clamp
+    
     process(clk)
+        variable v_temp_signed : integer;
     begin
         if rising_edge(clk) then
-            if sig_current_temp_int < 0 then
+            -- Convert the 16-bit signed vector to an integer
+            v_temp_signed := to_integer(signed(sig_temp_vector));
+            
+            -- Clamp logic for your display/regulator (0 to 4095 range)
+            if v_temp_signed < 0 then
                 sig_current_temp <= (others => '0');
-            elsif sig_current_temp_int > 4095 then
+            elsif v_temp_signed > 4095 then
                 sig_current_temp <= (others => '1');
             else
-                sig_current_temp <= to_unsigned(sig_current_temp_int, 12);
+                sig_current_temp <= to_unsigned(v_temp_signed, 12);
             end if;
         end if;
     end process;
@@ -141,13 +158,24 @@ begin
             temp_out    => sig_set_temp_slv
         );
 
-    temp_sensor : adt7420_driver
+    ------------------------------------------------------------------
+    -- ADT7420 Temperature Sensor Reader Instantiation
+    ------------------------------------------------------------------
+    sensor_reader : adt7420_reader
+        generic map ( 
+            CLOCK_FREQ_HZ    => 100_000_000,
+            READ_INTERVAL_MS => 1000 -- Read once per second
+        )
         port map (
-            clk      => clk,
-            rst      => btnc,
-            temp_10x => sig_current_temp_int,
-            scl      => TMP_SCL,
-            sda      => TMP_SDA
+            clock            => clk,              -- Corrected port name
+            reset            => btnc,             -- Corrected port name
+            sensor_address   => "1001000",        -- Standard 0x48 address
+            resolution_16bit => '1',              -- Use 16-bit for better accuracy
+            temperature      => sig_temp_vector,  -- Connect to intermediate vector
+            temp_valid       => sig_temp_valid,
+            error            => open,             -- Leave open or connect to an LED
+            scl              => TMP_SCL,
+            sda              => TMP_SDA
         );
 
     display_0 : display_driver
