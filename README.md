@@ -209,6 +209,7 @@ stateDiagram-v2
 
 ---
 
+![tb_bin2seg-img](img/tb_img/tb_bin2seg.png)
 [tb_bin2seg](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
 
 ---
