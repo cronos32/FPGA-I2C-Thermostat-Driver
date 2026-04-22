@@ -134,16 +134,19 @@ begin
         variable v_temp_signed : integer;
     begin
         if rising_edge(clk) then
-            -- Convert the 16-bit signed vector to an integer
-            v_temp_signed := to_integer(signed(sig_temp_vector));
-            
-            -- Clamp logic for your display/regulator (0 to 4095 range)
-            if v_temp_signed < 0 then
-                sig_current_temp <= (others => '0');
-            elsif v_temp_signed > 4095 then
-                sig_current_temp <= (others => '1');
-            else
-                sig_current_temp <= to_unsigned(v_temp_signed, 12);
+            -- Only update when the sensor delivers a fresh reading (1 Hz pulse)
+            if sig_temp_valid = '1' then
+                -- Convert the 16-bit signed vector to an integer
+                v_temp_signed := to_integer(signed(sig_temp_vector));
+
+                -- Clamp to 0-4095 range for display/regulator
+                if v_temp_signed < 0 then
+                    sig_current_temp <= (others => '0');
+                elsif v_temp_signed > 4095 then
+                    sig_current_temp <= (others => '1');
+                else
+                    sig_current_temp <= to_unsigned(v_temp_signed, 12);
+                end if;
             end if;
         end if;
     end process;
