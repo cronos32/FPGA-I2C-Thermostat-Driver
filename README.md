@@ -250,7 +250,7 @@ Purely combinational BCD converter. Takes two 12-bit unsigned values (`set_temp`
 ### `display_driver`
 Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (800 kHz tick) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
 
-### `bin2seg` (bi2seg)
+### `bin2seg`
 Purely combinational 4-bit binary to 7-segment decoder. Covers hexadecimal digits 0–9, A–F with active-low segment outputs (a '0' turns a segment on). The special code `0xC` displays the letter "C" used for the Celsius unit indicator.
 
 ### `debounce`
@@ -335,5 +335,5 @@ Post-implementation LUT count: **1 696** (5.20%).
 1. Analog Devices, *ADT7420 ±0.25°C Accuracy 16-Bit Digital I²C Temperature Sensor*, datasheet Rev. C. [Online]. Available: https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7420.pdf
 2. Digilent, *Nexys A7 Reference Manual*. [Online]. Available: https://digilent.com/reference/programmable-logic/nexys-a7/reference-manual
 3. A. Slater, *i2c-controller — A simple I²C controller in VHDL*, GitHub. [Online]. Available: https://github.com/aslak3/i2c-controller *(used as the basis for `i2c_controller.vhd`)*
-4. T. Fryza, *Digital Electronics 2 — Lab materials*, Brno University of Technology, 2026.
+4. T. Fryza, *Digital Electronics 1 — Lab materials*, Brno University of Technology, 2026.
 5. Digilent, *Nexys A7 Master XDC constraints file*, GitHub. [Online]. Available: https://github.com/Digilent/digilent-xdc

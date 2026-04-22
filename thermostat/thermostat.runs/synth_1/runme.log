@@ -1,0 +1,352 @@
+
+*** Running vivado
+    with args -log thermostat_top.vds -m64 -product Vivado -mode batch -messageDb vivado.pb -notrace -source thermostat_top.tcl
+
+
+
+****** Vivado v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 19:35:11 GMT 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Wed Apr 22 22:58:53 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source thermostat_top.tcl -notrace
+create_project: Time (s): cpu = 00:00:54 ; elapsed = 00:00:35 . Memory (MB): peak = 524.758 ; gain = 217.840
+Command: synth_design -top thermostat_top -part xc7a50ticsg324-1L
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xc7a50ti'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xc7a50ti'
+INFO: [Device 21-403] Loading part xc7a50ticsg324-1L
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 2 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 22316
+---------------------------------------------------------------------------------
+Starting RTL Elaboration : Time (s): cpu = 00:00:33 ; elapsed = 00:00:36 . Memory (MB): peak = 1258.352 ; gain = 539.480
+---------------------------------------------------------------------------------
+INFO: [Synth 8-638] synthesizing module 'thermostat_top' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd:48]
+INFO: [Synth 8-3491] module 'ui_fsm' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd:5' bound to instance 'ui_fsm_0' of component 'ui_fsm' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd:155]
+INFO: [Synth 8-638] synthesizing module 'ui_fsm' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd:15]
+	Parameter G_MAX bound to: 10000000 - type: integer 
+INFO: [Synth 8-3491] module 'clk_en' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:35' bound to instance 'ce_gen' of component 'clk_en' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd:58]
+INFO: [Synth 8-638] synthesizing module 'clk_en' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:44]
+	Parameter G_MAX bound to: 10000000 - type: integer 
+INFO: [Synth 8-256] done synthesizing module 'clk_en' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:44]
+INFO: [Synth 8-3491] module 'debounce' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/debounce.vhd:4' bound to instance 'deb_up' of component 'debounce' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd:65]
+INFO: [Synth 8-638] synthesizing module 'debounce' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/debounce.vhd:15]
+	Parameter G_MAX bound to: 200000 - type: integer 
+INFO: [Synth 8-3491] module 'clk_en' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:35' bound to instance 'clock_0' of component 'clk_en' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/debounce.vhd:52]
+INFO: [Synth 8-638] synthesizing module 'clk_en__parameterized1' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:44]
+	Parameter G_MAX bound to: 200000 - type: integer 
+INFO: [Synth 8-256] done synthesizing module 'clk_en__parameterized1' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:44]
+INFO: [Synth 8-256] done synthesizing module 'debounce' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/debounce.vhd:15]
+INFO: [Synth 8-3491] module 'debounce' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/debounce.vhd:4' bound to instance 'deb_down' of component 'debounce' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd:74]
+INFO: [Synth 8-256] done synthesizing module 'ui_fsm' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd:15]
+	Parameter CLOCK_FREQ_HZ bound to: 100000000 - type: integer 
+	Parameter READ_INTERVAL_MS bound to: 1000 - type: integer 
+INFO: [Synth 8-3491] module 'adt7420_reader' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd:40' bound to instance 'sensor_reader' of component 'adt7420_reader' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd:167]
+INFO: [Synth 8-638] synthesizing module 'adt7420_reader' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd:66]
+	Parameter CLOCK_FREQ_HZ bound to: 100000000 - type: integer 
+	Parameter READ_INTERVAL_MS bound to: 1000 - type: integer 
+INFO: [Synth 8-3491] module 'i2c_controller' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/i2c_controller.vhd:9' bound to instance 'i2c' of component 'i2c_controller' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd:159]
+INFO: [Synth 8-638] synthesizing module 'i2c_controller' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/i2c_controller.vhd:26]
+INFO: [Synth 8-256] done synthesizing module 'i2c_controller' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/i2c_controller.vhd:26]
+INFO: [Synth 8-256] done synthesizing module 'adt7420_reader' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd:66]
+INFO: [Synth 8-3491] module 'display_driver' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:35' bound to instance 'display_0' of component 'display_driver' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd:184]
+INFO: [Synth 8-638] synthesizing module 'display_driver' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:46]
+	Parameter G_MAX bound to: 800000 - type: integer 
+INFO: [Synth 8-3491] module 'clk_en' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:35' bound to instance 'clock_0' of component 'clk_en' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:89]
+INFO: [Synth 8-638] synthesizing module 'clk_en__parameterized3' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:44]
+	Parameter G_MAX bound to: 800000 - type: integer 
+INFO: [Synth 8-256] done synthesizing module 'clk_en__parameterized3' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/clk_en.vhd:44]
+	Parameter G_BITS bound to: 3 - type: integer 
+INFO: [Synth 8-3491] module 'counter' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/counter.vhd:26' bound to instance 'counter_0' of component 'counter' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:100]
+INFO: [Synth 8-638] synthesizing module 'counter' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/counter.vhd:40]
+	Parameter G_BITS bound to: 3 - type: integer 
+INFO: [Synth 8-256] done synthesizing module 'counter' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/counter.vhd:40]
+INFO: [Synth 8-226] default block is never used [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:118]
+INFO: [Synth 8-3491] module 'bin2seg' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/bi2seg.vhd:14' bound to instance 'decoder_0' of component 'bin2seg' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:136]
+INFO: [Synth 8-638] synthesizing module 'bin2seg' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/bi2seg.vhd:19]
+INFO: [Synth 8-256] done synthesizing module 'bin2seg' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/bi2seg.vhd:19]
+INFO: [Synth 8-226] default block is never used [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:147]
+INFO: [Synth 8-256] done synthesizing module 'display_driver' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_driver.vhd:46]
+INFO: [Synth 8-3491] module 'display_data_combiner' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_data_combiner.vhd:9' bound to instance 'combiner_0' of component 'display_data_combiner' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd:195]
+INFO: [Synth 8-638] synthesizing module 'display_data_combiner' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_data_combiner.vhd:17]
+INFO: [Synth 8-256] done synthesizing module 'display_data_combiner' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/display_data_combiner.vhd:17]
+INFO: [Synth 8-3491] module 'temp_regulator' declared at 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/temp_regulator.vhd:5' bound to instance 'regulator_0' of component 'temp_regulator' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd:202]
+INFO: [Synth 8-638] synthesizing module 'temp_regulator' [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/temp_regulator.vhd:19]
+INFO: [Synth 8-256] done synthesizing module 'temp_regulator' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/temp_regulator.vhd:19]
+INFO: [Synth 8-256] done synthesizing module 'thermostat_top' (0#1) [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd:48]
+---------------------------------------------------------------------------------
+Finished RTL Elaboration : Time (s): cpu = 00:00:47 ; elapsed = 00:00:53 . Memory (MB): peak = 1383.941 ; gain = 665.070
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:47 ; elapsed = 00:00:54 . Memory (MB): peak = 1383.941 ; gain = 665.070
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:47 ; elapsed = 00:00:54 . Memory (MB): peak = 1383.941 ; gain = 665.070
+---------------------------------------------------------------------------------
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.085 . Memory (MB): peak = 1383.941 ; gain = 0.000
+INFO: [Project 1-570] Preparing netlist for logic optimization
+
+Processing XDC Constraints
+Initializing timing engine
+Parsing XDC File [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/constrs_1/new/nexys.xdc]
+Finished Parsing XDC File [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/constrs_1/new/nexys.xdc]
+INFO: [Project 1-236] Implementation specific constraints were found while reading constraint file [C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.srcs/constrs_1/new/nexys.xdc]. These constraints will be ignored for synthesis but will be used in implementation. Impacted constraints are listed in the file [.Xil/thermostat_top_propImpl.xdc].
+Resolution: To avoid this warning, move constraints listed in [.Xil/thermostat_top_propImpl.xdc] to another XDC file and exclude this new file from synthesis with the used_in_synthesis property (File Properties dialog in GUI) and re-run elaboration/synthesis.
+Completed Processing XDC Constraints
+
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.003 . Memory (MB): peak = 1456.566 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+Constraint Validation Runtime : Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.060 . Memory (MB): peak = 1456.566 ; gain = 0.000
+---------------------------------------------------------------------------------
+Finished Constraint Validation : Time (s): cpu = 00:01:39 ; elapsed = 00:01:51 . Memory (MB): peak = 1456.566 ; gain = 737.695
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Loading Part and Timing Information
+---------------------------------------------------------------------------------
+Loading part: xc7a50ticsg324-1L
+---------------------------------------------------------------------------------
+Finished Loading Part and Timing Information : Time (s): cpu = 00:01:39 ; elapsed = 00:01:51 . Memory (MB): peak = 1456.566 ; gain = 737.695
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Applying 'set_property' XDC Constraints
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished applying 'set_property' XDC Constraints : Time (s): cpu = 00:01:39 ; elapsed = 00:01:51 . Memory (MB): peak = 1456.566 ; gain = 737.695
+---------------------------------------------------------------------------------
+INFO: [Synth 8-802] inferred FSM for state register 'state_reg' in module 'i2c_controller'
+INFO: [Synth 8-802] inferred FSM for state register 'state_reg' in module 'adt7420_reader'
+---------------------------------------------------------------------------------------------------
+                   State |                     New Encoding |                Previous Encoding 
+---------------------------------------------------------------------------------------------------
+                  start1 |                     000000000001 |                             0000
+                  start2 |                     000000000010 |                             0001
+            writing_data |                     000000000100 |                             0010
+             writing_ack |                     000000001000 |                             0011
+           write_waiting |                     000000010000 |                             0100
+            read_waiting |                     000000100000 |                             0111
+            reading_data |                     000001000000 |                             0101
+             reading_ack |                     000010000000 |                             0110
+                   stop1 |                     000100000000 |                             1000
+                   stop2 |                     001000000000 |                             1001
+                   stop3 |                     010000000000 |                             1010
+                restart1 |                     100000000000 |                             1011
+---------------------------------------------------------------------------------------------------
+INFO: [Synth 8-3354] encoded FSM with state register 'state_reg' using encoding 'one-hot' in module 'i2c_controller'
+---------------------------------------------------------------------------------------------------
+                   State |                     New Encoding |                Previous Encoding 
+---------------------------------------------------------------------------------------------------
+                 s_reset |                            00000 |                            00000
+              s_cfg_addr |                            00001 |                            00001
+         s_cfg_addr_wait |                            00010 |                            00010
+               s_cfg_ptr |                            00011 |                            00011
+          s_cfg_ptr_wait |                            00100 |                            00100
+               s_cfg_val |                            00101 |                            00101
+          s_cfg_val_wait |                            00110 |                            00110
+                  s_idle |                            00111 |                            00111
+             s_rd_addr_w |                            01000 |                            01000
+        s_rd_addr_w_wait |                            01001 |                            01001
+                s_rd_ptr |                            01010 |                            01010
+           s_rd_ptr_wait |                            01011 |                            01011
+            s_rd_restart |                            01100 |                            01100
+       s_rd_restart_wait |                            01101 |                            01101
+                s_rd_msb |                            01110 |                            01110
+           s_rd_msb_wait |                            01111 |                            01111
+                s_rd_lsb |                            10000 |                            10000
+           s_rd_lsb_wait |                            10001 |                            10001
+               s_rd_done |                            10010 |                            10010
+---------------------------------------------------------------------------------------------------
+INFO: [Synth 8-3354] encoded FSM with state register 'state_reg' using encoding 'sequential' in module 'adt7420_reader'
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:01:42 ; elapsed = 00:01:55 . Memory (MB): peak = 1456.566 ; gain = 737.695
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
++---Adders : 
+	   3 Input   33 Bit       Adders := 1     
+	   2 Input   32 Bit       Adders := 5     
+	   2 Input   31 Bit       Adders := 4     
+	   2 Input   14 Bit       Adders := 1     
+	   2 Input   13 Bit       Adders := 1     
+	   2 Input    9 Bit       Adders := 1     
+	   2 Input    7 Bit       Adders := 1     
+	   2 Input    4 Bit       Adders := 7     
+	   2 Input    3 Bit       Adders := 1     
++---Registers : 
+	               32 Bit    Registers := 1     
+	               16 Bit    Registers := 1     
+	               12 Bit    Registers := 1     
+	                8 Bit    Registers := 5     
+	                7 Bit    Registers := 1     
+	                4 Bit    Registers := 3     
+	                3 Bit    Registers := 1     
+	                1 Bit    Registers := 32    
++---Muxes : 
+	   2 Input   32 Bit        Muxes := 2     
+	   2 Input   16 Bit        Muxes := 1     
+	  23 Input   12 Bit        Muxes := 1     
+	   2 Input    8 Bit        Muxes := 2     
+	  12 Input    8 Bit        Muxes := 2     
+	  19 Input    8 Bit        Muxes := 1     
+	   8 Input    8 Bit        Muxes := 1     
+	   2 Input    7 Bit        Muxes := 1     
+	  19 Input    5 Bit        Muxes := 1     
+	  12 Input    4 Bit        Muxes := 1     
+	   2 Input    3 Bit        Muxes := 1     
+	   3 Input    1 Bit        Muxes := 2     
+	   2 Input    1 Bit        Muxes := 12    
+	  12 Input    1 Bit        Muxes := 11    
+	  19 Input    1 Bit        Muxes := 12    
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 120 (col length:60)
+BRAMs: 150 (col length: RAMB18 60 RAMB36 30)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:02:38 ; elapsed = 00:02:53 . Memory (MB): peak = 1503.664 ; gain = 784.793
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Applying XDC Timing Constraints
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Applying XDC Timing Constraints : Time (s): cpu = 00:03:01 ; elapsed = 00:03:18 . Memory (MB): peak = 1591.059 ; gain = 872.188
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Timing Optimization
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Timing Optimization : Time (s): cpu = 00:03:06 ; elapsed = 00:03:22 . Memory (MB): peak = 1614.980 ; gain = 896.109
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Technology Mapping
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Technology Mapping : Time (s): cpu = 00:03:11 ; elapsed = 00:03:28 . Memory (MB): peak = 1623.031 ; gain = 904.160
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished IO Insertion : Time (s): cpu = 00:03:42 ; elapsed = 00:04:01 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Instances
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Instances : Time (s): cpu = 00:03:42 ; elapsed = 00:04:01 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Rebuilding User Hierarchy
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Rebuilding User Hierarchy : Time (s): cpu = 00:03:43 ; elapsed = 00:04:02 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Ports
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Ports : Time (s): cpu = 00:03:43 ; elapsed = 00:04:02 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:03:43 ; elapsed = 00:04:02 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Nets
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Nets : Time (s): cpu = 00:03:43 ; elapsed = 00:04:02 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Writing Synthesis Report
+---------------------------------------------------------------------------------
+
+Report BlackBoxes: 
++-+--------------+----------+
+| |BlackBox name |Instances |
++-+--------------+----------+
++-+--------------+----------+
+
+Report Cell Usage: 
++------+-------+------+
+|      |Cell   |Count |
++------+-------+------+
+|1     |BUFG   |     1|
+|2     |CARRY4 |   319|
+|3     |LUT1   |    45|
+|4     |LUT2   |   503|
+|5     |LUT3   |   659|
+|6     |LUT4   |   282|
+|7     |LUT5   |   302|
+|8     |LUT6   |   474|
+|9     |MUXF7  |    17|
+|10    |MUXF8  |     6|
+|11    |FDCE   |   115|
+|12    |FDPE   |     3|
+|13    |FDRE   |   125|
+|14    |FDSE   |     5|
+|15    |IBUF   |     4|
+|16    |IOBUF  |     1|
+|17    |OBUF   |    19|
+|18    |OBUFT  |     1|
++------+-------+------+
+---------------------------------------------------------------------------------
+Finished Writing Synthesis Report : Time (s): cpu = 00:03:43 ; elapsed = 00:04:03 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+---------------------------------------------------------------------------------
+Synthesis finished with 0 errors, 0 critical warnings and 0 warnings.
+Synthesis Optimization Runtime : Time (s): cpu = 00:02:45 ; elapsed = 00:03:50 . Memory (MB): peak = 1851.828 ; gain = 1060.332
+Synthesis Optimization Complete : Time (s): cpu = 00:03:44 ; elapsed = 00:04:03 . Memory (MB): peak = 1851.828 ; gain = 1132.957
+INFO: [Project 1-571] Translating synthesized netlist
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.131 . Memory (MB): peak = 1861.008 ; gain = 0.000
+INFO: [Netlist 29-17] Analyzing 343 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+INFO: [Project 1-570] Preparing netlist for logic optimization
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.011 . Memory (MB): peak = 1864.668 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+  A total of 1 instances were transformed.
+  IOBUF => IOBUF (IBUF, OBUFT): 1 instance 
+
+Synth Design complete | Checksum: 87a7f7c8
+INFO: [Common 17-83] Releasing license: Synthesis
+60 Infos, 0 Warnings, 0 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 00:04:03 ; elapsed = 00:04:31 . Memory (MB): peak = 1864.668 ; gain = 1339.910
+Write ShapeDB Complete: Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.058 . Memory (MB): peak = 1864.668 ; gain = 0.000
+INFO: [Common 17-1381] The checkpoint 'C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.runs/synth_1/thermostat_top.dcp' has been generated.
+INFO: [Vivado 12-24828] Executing command : report_utilization -file thermostat_top_utilization_synth.rpt -pb thermostat_top_utilization_synth.pb
+INFO: [Common 17-206] Exiting Vivado at Wed Apr 22 23:04:17 2026...
