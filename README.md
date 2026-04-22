@@ -58,92 +58,83 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 
 ## Block diagram
 
-### Diagram of initial design
+### Architecture overview
 
 ```mermaid
-
 flowchart TD
 
-    %% ── External I/O ──────────────────────────────────────────────
-    CLK([clk])
+    %% ── External I/O ─────────────────────────────────────────────
+    CLK([clk\n100 MHz])
     BTNC([btnc\nreset])
-    BTNU([btnu\nup])
-    BTND([btnd\ndown])
-    I2C_BUS([ADT7420 sensor\nSDA / SCL])
-
+    BTNU([btnu\nincrement])
+    BTND([btnd\ndecrement])
+    I2C_BUS([ADT7420\nSDA / SCL])
     SEG([7-seg display\nseg / an / dp])
-    LED([RGB LED\nled16 r/g/b])
+    LED([RGB LED\nled16_r/g/b])
     HEAT([heat_en])
     COOL([cool_en])
 
-    %% ── Modules ───────────────────────────────────────────────────
-    TOP["thermostat_top\n─────────────\nsync current_temp\nclamp logic\n[cite: 1, 12]"]
+    %% ── Top level ────────────────────────────────────────────────
+    TOP["thermostat_top\n──────────────\ntemp clamp & routing\nset_temp / current_temp"]
 
-    subgraph UI ["ui_fsm (User Interface) [cite: 48, 49]"]
-        CE["clk_en\n(G_MAX=10^7)\n[cite: 56, 82]"]
-        DBU["debounce\n(up)\n[cite: 57, 83]"]
-        DBD["debounce\n(down)\n[cite: 58]"]
-        FSM["UI Logic\ntemp_reg: 55-395\n"]
+    %% ── UI FSM ───────────────────────────────────────────────────
+    subgraph UI ["ui_fsm"]
+        CE["clk_en\n10 Hz"]
+        DBU["debounce\n(up)"]
+        DBD["debounce\n(down)"]
+        FSM["setpoint register\n5.5 – 39.5 °C · step 0.5 °C"]
     end
 
-    subgraph SENS_GRP ["Sensor Subsystem"]
-        SENS["adt7420_driver\n───────────────\nFSM Control\nFixed-pt: * 625 / 1000\n[cite: 101, 108]"]
-        I2C["i2c_master\n──────────\nQuarter-period FSM\nOpen-drain OE\n[cite: 109, 210]"]
+    %% ── Sensor subsystem ─────────────────────────────────────────
+    subgraph SENS_GRP ["adt7420_reader"]
+        I2C["i2c_controller\nI²C master FSM"]
     end
 
-    COMB["display_data_combiner\n─────────────────────\nBCD: hundreds/tens/ones\nUnit: C / F\n[cite: 162, 164]"]
+    %% ── Display path ─────────────────────────────────────────────
+    COMB["display_data_combiner\nBCD conversion · °C label"]
 
-    REG["temp_regulator\n──────────────\nHysteresis: 0.5°C\n[cite: 187, 188]"]
+    subgraph DISP_GRP ["display_driver"]
+        CE_D["clk_en\n800 kHz"]
+        CNT["counter\n3-bit"]
+        B2S["bin2seg\ndecoder"]
+    end
 
-    DISP["display_driver\n──────────────\nRefresh Multiplexer\n[cite: 24, 25]"]
+    %% ── Regulator ────────────────────────────────────────────────
+    REG["temp_regulator\nhysteresis ± 0.5 °C"]
 
-    %% ── Connections ─────────────────────────────────────────────
-    CLK  --> TOP
-    CLK  --> UI
-    CLK  --> SENS
-    CLK  --> DISP
-    
-    BTNC -->|reset| TOP
-    BTNC -->|reset| UI
-    BTNC -->|rst| SENS
-    BTNC -->|rst| DISP
+    %% ── Clock & reset distribution ───────────────────────────────
+    CLK  --> TOP & UI & SENS_GRP & DISP_GRP
+    BTNC -->|rst| TOP & UI & SENS_GRP & DISP_GRP
 
-    %% ── UI Internal & External ────────────────────────────────────
-    BTNU --> DBU
-    BTND --> DBD
-    CE   -->|ce 10Hz| FSM
-    DBU  -->|press_up| FSM
-    DBD  -->|press_down| FSM
-    FSM  -->|teplota_out 12b| TOP
+    %% ── Button path ──────────────────────────────────────────────
+    BTNU --> DBU -->|press_up| FSM
+    BTND --> DBD -->|press_down| FSM
+    CE   -->|ce 10 Hz| FSM
+    FSM  -->|temp_out 12b| TOP
 
-    %% ── Data Flow ───────────────────────────────────────────────
-    TOP  -->|set_temp| COMB
-    TOP  -->|set_temp| REG
-    
-    SENS -->|temp_10x| TOP
-    TOP  -->|current_temp| COMB
-    TOP  -->|current_temp| REG
-
-    SENS <--> I2C
+    %% ── Sensor path ──────────────────────────────────────────────
     I2C  <-->|SCL / SDA| I2C_BUS
+    SENS_GRP -->|temperature 16b\ntemp_valid| TOP
 
-    %% ── Output ────────────────────────────────────────────────────
-    COMB -->|data_out 32b| DISP
-    DISP -->|seg / anode / dp| SEG
+    %% ── Data flow ────────────────────────────────────────────────
+    TOP -->|set_temp 12b| COMB & REG
+    TOP -->|current_temp 12b| COMB & REG
 
-    REG  -->|led_r/g/b| LED
-    REG  -->|heat_en| HEAT
-    REG  -->|cool_en| COOL
+    COMB -->|data_out 32b| DISP_GRP
+    DISP_GRP -->|seg / an / dp| SEG
 
-    %% ── Styles ────────────────────────────────────────────────────
+    REG -->|led_r/g/b| LED
+    REG -->|heat_en| HEAT
+    REG -->|cool_en| COOL
+
+    %% ── Styles ───────────────────────────────────────────────────
     classDef io     fill:#E6F1FB,stroke:#185FA5,color:#0C447C
     classDef module fill:#EAF3DE,stroke:#3B6D11,color:#27500A
     classDef top    fill:#EEEDFE,stroke:#534AB7,color:#3C3489
 
     class CLK,BTNC,BTNU,BTND,I2C_BUS,SEG,LED,HEAT,COOL io
-    class COMB,REG,DISP,UI,SENS,I2C module
+    class COMB,REG,DISP_GRP,UI,SENS_GRP,I2C module
     class TOP top
-
 ```
 
 ### Diagram of final design
@@ -152,56 +143,88 @@ flowchart TD
 
 ## VHDL FSM diagrams
 
-### States of i2c_master
+### States of i2c_controller
+
+State names match the `T_STATE` type in [i2c_controller.vhd](thermostat/thermostat.srcs/sources_1/new/i2c_controller.vhd).
+The FSM advances once per rising edge of the internal `running_clock` (derived from the 100 MHz main clock).
 
 ```mermaid
 stateDiagram-v2
-    [*] --> IDLE
+    direction LR
 
-    IDLE --> STRT : start_pending=1
-    IDLE --> IDLE : otherwise
+    [*] --> START1
 
-    STRT --> ADDR_S : after START condition
+    START1 --> START2
 
-    ADDR_S --> ADDR_S : bit_idx != 0
-    ADDR_S --> ADDR_ACK : bit_idx == 0
+    START2 --> WRITING_DATA : load addr+R/W,\nbit_counter=8
 
-    ADDR_ACK --> DATA : always
+    WRITING_DATA --> WRITING_DATA : bit_counter > 0\n(toggle SCL)
+    WRITING_DATA --> WRITING_ACK  : bit_counter = 0
 
-    DATA --> DATA : bit_idx != 0
-    DATA --> DATA_ACK : bit_idx == 0
+    WRITING_ACK --> STOP1         : last_byte=1 & SCL↑\n(sample ACK)
+    WRITING_ACK --> WRITE_WAITING : last_byte=0 & R/W=0 & SCL↑
+    WRITING_ACK --> READ_WAITING  : last_byte=0 & R/W=1 & SCL↑
 
-    DATA_ACK --> STP : stop_on_done=1
-    DATA_ACK --> IDLE : stop_on_done=0
+    WRITE_WAITING --> WRITING_DATA : next trigger\n(load write_data)
+    READ_WAITING  --> READING_DATA : next trigger\n(bit_counter=8)
 
-    STP --> IDLE
+    READING_DATA --> READING_DATA : bit_counter > 0\n(toggle SCL, sample SDA)
+    READING_DATA --> READING_ACK  : bit_counter = 0
+
+    READING_ACK --> STOP1        : last_byte=1 & SCL↑\n(send NAK)
+    READING_ACK --> READ_WAITING : last_byte=0 & SCL↑\n(send ACK)
+
+    STOP1 --> STOP2
+    STOP2 --> STOP3
+    STOP3 --> START1 : pause_running=1\n(wait for next trigger)
+
+    RESTART1 --> START1 : entered immediately\nwhen restart=1
+
+    note right of RESTART1
+        restart=1 is checked
+        every clock cycle,
+        overrides current state
+    end note
 ```
 
-### States of adt7420_driver
+### States of adt7420_reader
+
+State names match the `T_STATE` type in [adt7420_reader.vhd](thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd).
+Each `_SETUP` state fires a trigger to `i2c_controller`; each `_WAIT` state waits for the `busy` falling edge.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WAIT_1S
 
-    WAIT_1S --> WAIT_1S : timer < 1s
-    WAIT_1S --> SET_REG : timer done
+    [*] --> S_RESET
+    S_RESET --> S_CFG_ADDR : latch resolution bit
 
-    SET_REG --> WAIT_SET
+    state "Configuration write (one-time at startup)" as CFG {
+        S_CFG_ADDR      --> S_CFG_ADDR_WAIT  : trigger↑ (addr+W)
+        S_CFG_ADDR_WAIT --> S_CFG_PTR        : busy↓
+        S_CFG_PTR       --> S_CFG_PTR_WAIT   : trigger↑ (ptr=0x03)
+        S_CFG_PTR_WAIT  --> S_CFG_VAL        : busy↓
+        S_CFG_VAL       --> S_CFG_VAL_WAIT   : trigger↑ (config byte, last_byte=1)
+    }
 
-    WAIT_SET --> WAIT_SET : m_busy=1
-    WAIT_SET --> READ_MSB : m_busy=0 && start=0
+    S_CFG_VAL_WAIT --> S_IDLE : busy↓
 
-    READ_MSB --> WAIT_MSB
+    S_IDLE --> S_IDLE      : interval_tick=0
+    S_IDLE --> S_RD_ADDR_W : interval_tick=1\n(every READ_INTERVAL_MS)
 
-    WAIT_MSB --> WAIT_MSB : m_busy=1
-    WAIT_MSB --> READ_LSB : m_busy=0 && start=0
+    state "Temperature read (every READ_INTERVAL_MS)" as RD {
+        S_RD_ADDR_W      --> S_RD_ADDR_W_WAIT   : trigger↑ (addr+W)
+        S_RD_ADDR_W_WAIT --> S_RD_PTR            : busy↓
+        S_RD_PTR         --> S_RD_PTR_WAIT       : trigger↑ (ptr=0x00)
+        S_RD_PTR_WAIT    --> S_RD_RESTART        : busy↓
+        S_RD_RESTART     --> S_RD_RESTART_WAIT   : trigger↑ + restart\n(addr+R)
+        S_RD_RESTART_WAIT --> S_RD_MSB           : busy↓
+        S_RD_MSB         --> S_RD_MSB_WAIT       : trigger↑ (read MSB, ACK)
+        S_RD_MSB_WAIT    --> S_RD_LSB            : busy↓ · latch raw_msb
+        S_RD_LSB         --> S_RD_LSB_WAIT       : trigger↑ (read LSB, NAK+STOP)
+        S_RD_LSB_WAIT    --> S_RD_DONE           : busy↓ · latch raw_lsb
+    }
 
-    READ_LSB --> WAIT_LSB
-
-    WAIT_LSB --> WAIT_LSB : m_busy=1
-    WAIT_LSB --> CALC : m_busy=0 && start=0
-
-    CALC --> WAIT_1S
+    S_RD_DONE --> S_IDLE : pulse temp_valid\nconvert raw→tenths °C
 ```
 
 ## Module descriptions
