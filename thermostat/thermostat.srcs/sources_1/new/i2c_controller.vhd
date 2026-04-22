@@ -43,8 +43,10 @@ begin
     variable i2c_clock_counter : UNSIGNED (6 downto 0);    -- Slows down the SCL from main clock
     begin
         if (reset = '1') then
-            i2c_clock_counter := (others => '0');
-            running <= '0';
+            i2c_clock_counter      := (others => '0');
+            running                <= '0';
+            running_clock          <= '0';
+            previous_running_clock <= '0';
         elsif (clock'Event and clock = '1') then
             if (trigger = '1') then
                 -- On a trigger, enter running state and clear the counter
@@ -71,9 +73,15 @@ begin
     begin
         if (reset = '1') then
             -- Tri-state outputs and reset the state for the first trigger
-            scl_local <= '1';
-            sda_local <= '1';
-            state <= START1;
+            scl_local     <= '1';
+            sda_local     <= '1';
+            state         <= START1;
+            pause_running <= '0';
+            ack_error     <= '0';
+            read_data     <= (others => '0');
+            clock_flip    := '0';
+            bit_counter   := 0;
+            data_to_write := (others => '0');
         elsif (clock'Event and clock = '1') then
             -- Assume we are not pausing
             pause_running <= '0';
