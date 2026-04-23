@@ -24,8 +24,13 @@ entity thermostat_top is
         led16_r : out STD_LOGIC;
         led16_g : out STD_LOGIC;
         led16_b : out STD_LOGIC;
+        led  : out STD_LOGIC_VECTOR (1 downto 0);
         TMP_SDA : inout STD_LOGIC;
-        TMP_SCL : inout STD_LOGIC
+        TMP_SCL : inout STD_LOGIC;
+        j_sda : inout STD_LOGIC;
+        j_scl : inout STD_LOGIC;
+        heat_en : out STD_LOGIC;
+        cool_en : out STD_LOGIC
     );
 end thermostat_top;
 
@@ -109,6 +114,9 @@ architecture Behavioral of thermostat_top is
     -- Intermediate signal to hold the raw SLV from the reader
     signal sig_temp_vector : std_logic_vector(15 downto 0);
     signal sig_temp_valid  : std_logic;
+    
+    signal sig_sda : std_logic;
+    signal sig_scl : std_logic;
 
 begin
     
@@ -156,13 +164,13 @@ begin
         port map (
             clock            => clk,              -- Corrected port name
             reset            => btnc,             -- Corrected port name
-            sensor_address   => "1001000",        -- Standard 0x48 address
+            sensor_address   => "1001000",        -- Nexys A7: A1=1, A0=1 -> 0x4B
             resolution_16bit => '1',              -- Use 16-bit for better accuracy
             temperature      => sig_temp_vector,  -- Connect to intermediate vector
             temp_valid       => sig_temp_valid,
-            error            => open,             -- Leave open or connect to an LED
-            scl              => TMP_SCL,
-            sda              => TMP_SDA
+            error            => led(0),             -- Leave open or connect to an LED
+            scl              => sig_scl,
+            sda              => sig_sda
         );
 
     display_0 : display_driver
@@ -190,10 +198,15 @@ begin
 
         led_red      => led16_r,
         led_blue     => led16_b,
-        led_green    => led16_g--,
+        led_green    => led16_g,
 
-        --heat_en =>  -not used right now, for later purposes
-        --cool_en =>
+        heat_en =>  heat_en,
+        cool_en =>  cool_en
     );
+    
+    TMP_SDA <= sig_sda;
+    TMP_SCL <= sig_scl;
+    j_sda <= sig_sda;
+    j_scl <= sig_scl;
 
 end Behavioral;

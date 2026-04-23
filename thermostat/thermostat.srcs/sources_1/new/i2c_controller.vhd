@@ -206,9 +206,12 @@ begin
                         state <= START1;
 
                     when RESTART1 =>
-                        -- Full START by setting the outputs to 0 seems to be needed
+                        -- Lower SCL while keeping SDA high so START1->START2 generates
+                        -- a clean repeated START (SDA falls while SCL is high).
+                        -- Do NOT drive SDA low here: SDA rising in START1 while SCL is
+                        -- already high would look like a STOP condition to the slave.
                         scl_local <= '0';
-                        sda_local <= '0';
+                        sda_local <= '1';
                         state <= START1;
                 end case;
             end if;

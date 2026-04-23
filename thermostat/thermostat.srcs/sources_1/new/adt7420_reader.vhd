@@ -100,6 +100,7 @@ architecture behavioral of adt7420_reader is
     ------------------------------------------------------------------
     type T_STATE is (
         S_RESET,
+        S_STARTUP,                         -- Wait for ADT7420 power-on reset (~1 ms)
 
         -- One-time configuration write (3 triggers)
         S_CFG_ADDR,   S_CFG_ADDR_WAIT,    -- T1: addr+W
@@ -132,6 +133,13 @@ architecture behavioral of adt7420_reader is
     signal i2c_ack_error  : STD_LOGIC;
     signal i2c_busy       : STD_LOGIC;
     signal busy_d         : STD_LOGIC := '0';  -- delayed busy for edge detect
+
+    ------------------------------------------------------------------
+    -- Startup delay: wait 10 ms after reset before first I2C access
+    -- so the ADT7420 power-on reset (≤1 ms) is complete.
+    ------------------------------------------------------------------
+    constant STARTUP_TICKS : integer := (CLOCK_FREQ_HZ / 1000) * 10;  -- 10 ms
+    signal startup_cnt : unsigned (31 downto 0) := (others => '0');
 
     ------------------------------------------------------------------
     -- Interval timer
@@ -210,6 +218,7 @@ begin
             error_r        <= '0';
             cfg_is_16bit   <= '0';
             busy_d         <= '0';
+            startup_cnt    <= (others => '0');
         elsif (clock'Event and clock = '1') then
             -- One-cycle defaults
             i2c_trigger  <= '0';
@@ -221,7 +230,15 @@ begin
                 ----------------------------------------------------------
                 when S_RESET =>
                     cfg_is_16bit <= resolution_16bit;
-                    state <= S_CFG_ADDR;
+                    startup_cnt  <= (others => '0');
+                    state        <= S_STARTUP;
+
+                when S_STARTUP =>
+                    if (startup_cnt = to_unsigned(STARTUP_TICKS - 1, startup_cnt'length)) then
+                        state <= S_CFG_ADDR;
+                    else
+                        startup_cnt <= startup_cnt + 1;
+                    end if;
 
                 ----------------------------------------------------------
                 -- Configuration write: addr+W, ptr=0x03, data=config byte
@@ -332,8 +349,8 @@ begin
                 -- RESTART1 -> START1 -> START2 -> WRITING_DATA where it
                 -- sends {address, '1'} (the R bit).
                 when S_RD_RESTART =>
-                    i2c_read_write <= '1';
-                    i2c_restart    <= '1';
+                    i2c_read_write <= '0';
+                    i2c_restart    <= '0';
                     i2c_last_byte  <= '0';
                     i2c_trigger    <= '1';
                     state          <= S_RD_RESTART_WAIT;
