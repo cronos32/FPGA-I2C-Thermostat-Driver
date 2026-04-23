@@ -131,7 +131,7 @@ begin
                         if (clock_flip = '1') then
                             -- Latch the SDA input
                             ack_error <= sda;
-                        else
+                        else -- fix 
                             if (last_byte = '1') then
                                 -- Last byte to write? Generate a STOP sequence
                                 state <= STOP1;
