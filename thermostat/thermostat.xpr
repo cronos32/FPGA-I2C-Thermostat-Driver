@@ -4,7 +4,7 @@
 <!-- Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.                   -->
 <!-- Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.   -->
 
-<Project Product="Vivado" Version="7" Minor="71" Path="C:/Users/admin/Documents/02-projekty/01-skolni_projekty/FPGA-I2C-Thermostatic-Driver/thermostat/thermostat.xpr">
+<Project Product="Vivado" Version="7" Minor="71" Path="C:/Users/asus1/Documents/GitHub/FPGA-I2C-Thermostat-Driver/thermostat/thermostat.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="a661de9a422c46d48b4af86a4ac9b82a"/>
