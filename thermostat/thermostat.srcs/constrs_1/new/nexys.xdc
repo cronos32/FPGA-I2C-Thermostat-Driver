@@ -17,6 +17,26 @@ set_property -dict { PACKAGE_PIN M18 IOSTANDARD LVCMOS33 } [get_ports {btnu}];
 set_property -dict { PACKAGE_PIN P18 IOSTANDARD LVCMOS33 } [get_ports {btnd}];
 
 # -----------------------------------------------
+#Temperature Sensor
+# -----------------------------------------------
+set_property -dict  { PACKAGE_PIN C14   IOSTANDARD LVCMOS33 PULLUP true} [get_ports { TMP_SCL }]; #IO_L1N_T0_AD0N_15 Sch=tmp_scl
+set_property -dict { PACKAGE_PIN C15   IOSTANDARD LVCMOS33 PULLUP true} [get_ports { TMP_SDA }]; #IO_L12N_T1_MRCC_15 Sch=tmp_sda
+
+# -----------------------------------------------
+# Seven-segment cathodes CA..CG + DP (active-low)
+# seg[6]=A ... seg[0]=G
+# -----------------------------------------------
+set_property PACKAGE_PIN T10 [get_ports {seg[6]}]; # CA
+set_property PACKAGE_PIN R10 [get_ports {seg[5]}]; # CB
+set_property PACKAGE_PIN K16 [get_ports {seg[4]}]; # CC
+set_property PACKAGE_PIN K13 [get_ports {seg[3]}]; # CD
+set_property PACKAGE_PIN P15 [get_ports {seg[2]}]; # CE
+set_property PACKAGE_PIN T11 [get_ports {seg[1]}]; # CF
+set_property PACKAGE_PIN L18 [get_ports {seg[0]}]; # CG
+set_property PACKAGE_PIN H15 [get_ports {dp}];
+set_property IOSTANDARD LVCMOS33 [get_ports {seg[*] dp}]
+
+# -----------------------------------------------
 # Seven-segment anodes AN7..AN0 (active-low)
 # -----------------------------------------------
 set_property PACKAGE_PIN J17 [get_ports {an[0]}];
@@ -29,16 +49,6 @@ set_property PACKAGE_PIN K2  [get_ports {an[6]}];
 set_property PACKAGE_PIN U13 [get_ports {an[7]}];
 set_property IOSTANDARD LVCMOS33 [get_ports {an[*]}]
 
-
-set_property PACKAGE_PIN T10 [get_ports {seg[6]}] ; # CA
-set_property PACKAGE_PIN R10 [get_ports {seg[5]}] ; # CB
-set_property PACKAGE_PIN K16 [get_ports {seg[4]}] ; # CC
-set_property PACKAGE_PIN K13 [get_ports {seg[3]}] ; # CD
-set_property PACKAGE_PIN P15 [get_ports {seg[2]}] ; # CE
-set_property PACKAGE_PIN T11 [get_ports {seg[1]}] ; # CF
-set_property PACKAGE_PIN L18 [get_ports {seg[0]}] ; # CG
-set_property PACKAGE_PIN H15 [get_ports {dp}]
-set_property IOSTANDARD LVCMOS33 [get_ports {seg[*] dp}]
 # -----------------------------------------------
 # RGB LEDs
 # -----------------------------------------------
@@ -47,9 +57,30 @@ set_property -dict { PACKAGE_PIN M16 IOSTANDARD LVCMOS33 } [get_ports {led16_g}]
 set_property -dict { PACKAGE_PIN R12 IOSTANDARD LVCMOS33 } [get_ports {led16_b}];
 
 # -----------------------------------------------
-##Temperature Sensor
+## Pmod Header JA
 # -----------------------------------------------
-set_property -dict { PACKAGE_PIN C14   IOSTANDARD LVCMOS33 } [get_ports { TMP_SCL }]; #IO_L1N_T0_AD0N_15 Sch=tmp_scl
-set_property -dict { PACKAGE_PIN C15   IOSTANDARD LVCMOS33 } [get_ports { TMP_SDA }]; #IO_L12N_T1_MRCC_15 Sch=tmp_sda
-#set_property -dict { PACKAGE_PIN D13   IOSTANDARD LVCMOS33 } [get_ports { TMP_INT }]; #IO_L6N_T0_VREF_15 Sch=tmp_int
-#set_property -dict { PACKAGE_PIN B14   IOSTANDARD LVCMOS33 } [get_ports { TMP_CT }]; #IO_L2N_T0_AD8N_15 Sch=tmp_ct
+set_property -dict { PACKAGE_PIN C17   IOSTANDARD LVCMOS33 } [get_ports { heat_en }]; #Sch=ja[1]
+set_property -dict { PACKAGE_PIN D18   IOSTANDARD LVCMOS33 } [get_ports { cool_en }]; #Sch=ja[2]
+set_property -dict { PACKAGE_PIN E18   IOSTANDARD LVCMOS33 PULLUP true} [get_ports { j_sda }]; #IO_L21P_T3_DQS_15 Sch=ja[3]
+set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 PULLUP true} [get_ports { j_scl }]; #IO_L18N_T2_A23_15 Sch=ja[4]
+
+# -----------------------------------------------
+# LEDs
+# -----------------------------------------------
+set_property PACKAGE_PIN H17 [get_ports {led[0]}];
+set_property PACKAGE_PIN K15 [get_ports {led[1]}];
+set_property PACKAGE_PIN J13 [get_ports {led[2]}];
+set_property PACKAGE_PIN N14 [get_ports {led[3]}];
+set_property PACKAGE_PIN R18 [get_ports {led[4]}];
+set_property PACKAGE_PIN V17 [get_ports {led[5]}];
+set_property PACKAGE_PIN U17 [get_ports {led[6]}];
+set_property PACKAGE_PIN U16 [get_ports {led[7]}];
+set_property PACKAGE_PIN V16 [get_ports {led[8]}];
+set_property PACKAGE_PIN T15 [get_ports {led[9]}];
+set_property PACKAGE_PIN U14 [get_ports {led[10]}];
+set_property PACKAGE_PIN T16 [get_ports {led[11]}];
+set_property PACKAGE_PIN V15 [get_ports {led[12]}];
+set_property PACKAGE_PIN V14 [get_ports {led[13]}];
+set_property PACKAGE_PIN V12 [get_ports {led[14]}];
+set_property PACKAGE_PIN V11 [get_ports {led[15]}];
+set_property IOSTANDARD LVCMOS33 [get_ports {led[*]}]

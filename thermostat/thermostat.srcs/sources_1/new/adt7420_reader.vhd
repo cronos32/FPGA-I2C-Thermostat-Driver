@@ -349,8 +349,8 @@ begin
                 -- RESTART1 -> START1 -> START2 -> WRITING_DATA where it
                 -- sends {address, '1'} (the R bit).
                 when S_RD_RESTART =>
-                    i2c_read_write <= '0';
-                    i2c_restart    <= '0';
+                    i2c_read_write <= '1';
+                    i2c_restart    <= '1';
                     i2c_last_byte  <= '0';
                     i2c_trigger    <= '1';
                     state          <= S_RD_RESTART_WAIT;
