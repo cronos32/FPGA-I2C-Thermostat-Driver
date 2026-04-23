@@ -82,7 +82,7 @@ flowchart TD
         CE["clk_en\n10 Hz"]
         DBU["debounce\n(up)"]
         DBD["debounce\n(down)"]
-        FSM["setpoint register\n5.5 – 39.5 °C · step 0.5 °C"]
+        FSM["setpoint register\n5.5 – 40.0 °C · step 0.5 °C"]
     end
 
     %% ── Sensor subsystem ─────────────────────────────────────────
@@ -94,7 +94,7 @@ flowchart TD
     COMB["display_data_combiner\nBCD conversion · °C label"]
 
     subgraph DISP_GRP ["display_driver"]
-        CE_D["clk_en\n800 kHz"]
+        CE_D["clk_en\n125 Hz"]
         CNT["counter\n3-bit"]
         B2S["bin2seg\ndecoder"]
     end
@@ -209,14 +209,14 @@ stateDiagram-v2
     S_CFG_VAL_WAIT --> S_IDLE : busy↓
 
     S_IDLE --> S_IDLE      : interval_tick=0
-    S_IDLE --> S_RD_ADDR_W : interval_tick=1\n(every READ_INTERVAL_MS)
+    S_IDLE --> S_RD_ADDR_W : interval_tick=1 (every READ_INTERVAL_MS)
 
     state "Temperature read (every READ_INTERVAL_MS)" as RD {
         S_RD_ADDR_W      --> S_RD_ADDR_W_WAIT   : trigger↑ (addr+W)
         S_RD_ADDR_W_WAIT --> S_RD_PTR            : busy↓
         S_RD_PTR         --> S_RD_PTR_WAIT       : trigger↑ (ptr=0x00)
         S_RD_PTR_WAIT    --> S_RD_RESTART        : busy↓
-        S_RD_RESTART     --> S_RD_RESTART_WAIT   : trigger↑ + restart\n(addr+R)
+        S_RD_RESTART     --> S_RD_RESTART_WAIT   : trigger↑ + restart (addr+R)
         S_RD_RESTART_WAIT --> S_RD_MSB           : busy↓
         S_RD_MSB         --> S_RD_MSB_WAIT       : trigger↑ (read MSB, ACK)
         S_RD_MSB_WAIT    --> S_RD_LSB            : busy↓ · latch raw_msb
@@ -224,63 +224,66 @@ stateDiagram-v2
         S_RD_LSB_WAIT    --> S_RD_DONE           : busy↓ · latch raw_lsb
     }
 
-    S_RD_DONE --> S_IDLE : pulse temp_valid\nconvert raw→tenths °C
+    S_RD_DONE --> S_IDLE : pulse temp_valid convert raw→tenths °C
 ```
 
 ## Module descriptions
 
-### `thermostat_top`
+### [`thermostat_top`](thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd)
+
 Top-level entity that wires all subsystems together. Instantiates the sensor reader, UI FSM, display combiner, display driver, and temperature regulator. Contains the only `inout` ports in the design (`TMP_SDA`, `TMP_SCL`) as required by the physical I²C bus. A synchronous process clamps the raw signed 16-bit temperature from the sensor into an unsigned 12-bit value (tenths of °C) for use by the display and regulator.
 
 ### `i2c_controller`
-Basic I²C master FSM. An internal 7-bit counter divides the 100 MHz clock down to generate a bit clock (`running_clock`). The FSM advances on each rising edge of `running_clock` and sequences through START, address+R/W, data bytes, ACK/NAK, and STOP states. Open-drain operation is emulated via output-enable signals (`scl_oe`, `sda_oe`) rather than `inout` ports — '1' pulls the line low, '0' releases it to the pull-up resistor. Adapted from [aslak3/i2c-controller](https://github.com/aslak3/i2c-controller).
+
+Basic I²C master FSM. An internal 7-bit counter divides the 100 MHz clock down to generate a bit clock (`running_clock`). The FSM advances on each rising edge of `running_clock` and sequences through START, address+R/W, data bytes, ACK/NAK, and STOP states. Open-drain operation is implemented via `inout` ports (`scl`, `sda`) driven with tri-state logic using internal signals `scl_local` and `sda_local` — `'1'` releases the line to `'Z'` (pull-up), `'0'` pulls the line low. Adapted from [aslak3/i2c-controller](https://github.com/aslak3/i2c-controller).
 
 ### `adt7420_reader`
+
 Wrapper around `i2c_controller` that performs periodic temperature reads from the ADT7420 sensor. At startup it writes the configuration register (resolution selection). Then, every `READ_INTERVAL_MS` milliseconds, it executes a 5-trigger read sequence: address+W → pointer byte → RESTART+address+R → read MSB → read LSB. A separate combinational process converts the raw 16-bit two's-complement ADC value to tenths of °C (signed). Temperature is output as a 16-bit signed vector; `temp_valid` pulses high for one clock cycle per completed reading.
 
 ### `ui_fsm`
-User-interface state machine for setpoint adjustment. Internally instantiates `clk_en` (10 Hz tick) and two `debounce` instances for the up/down buttons. A fast process latches 1-cycle button-press pulses between slow ticks. A slow process (gated by the 10 Hz CE) increments or decrements the integer setpoint register by 0.5 °C steps (5 in tenths-of-degree units), clamped to the range 5.5 °C – 39.5 °C. The 12-bit result is output as a `std_logic_vector`.
+
+User-interface state machine for setpoint adjustment. Internally instantiates `clk_en` (10 Hz tick) and two `debounce` instances for the up/down buttons. A fast process latches 1-cycle button-press pulses between slow ticks. A slow process (gated by the 10 Hz CE) increments or decrements the integer setpoint register by 0.5 °C steps (5 in tenths-of-degree units), clamped to the range 5.5 °C – 40.0 °C. The 12-bit result is output as a `std_logic_vector`.
 
 ### `temp_regulator`
+
 Purely combinational thermostat controller with hysteresis. Compares `current_temp` against `set_temp ± HYST` (HYST = 5, i.e. ±0.5 °C). Drives `led_red` and `heat_en` when heating is required, `led_blue` and `cool_en` when cooling is required, and `led_green` when the temperature is within the hysteresis band. No clock or reset — output changes immediately with inputs.
 
 ### `display_data_combiner`
+
 Purely combinational BCD converter. Takes two 12-bit unsigned values (`set_temp` and `current_temp`, in tenths of °C) and packs them into a single 32-bit word for the display driver. Each value is split into hundreds, tens, and ones digits (4 bits each), with the lowest nibble fixed to `0xC` to display the letter "C" (degrees Celsius) on the rightmost digit of each group. Values above 999 are clamped.
 
 ### `display_driver`
-Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (800 kHz tick) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
+
+Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (125 Hz tick, G_MAX = 800 000) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
+
+---
 
 ### `bin2seg`
+
 Purely combinational 4-bit binary to 7-segment decoder. Covers hexadecimal digits 0–9, A–F with active-low segment outputs (a '0' turns a segment on). The special code `0xC` displays the letter "C" used for the Celsius unit indicator.
 
 ### `debounce`
+
 Button debouncer with synchronizer. Samples the raw button input at 2 ms intervals via `clk_en`. Four consecutive equal samples are required before the debounced output changes state (shift-register majority filter). A one-cycle `btn_press` pulse is generated on the rising edge of the debounced output. A two-flip-flop input synchronizer prevents metastability.
 
 ### `clk_en`
+
 Parameterizable clock-enable generator. Counts from 0 to `G_MAX − 1` and asserts `ce` for exactly one clock cycle when the count wraps, producing a periodic enable pulse. Used throughout the design to create lower-rate processes without generating additional clocks.
 
 ### `counter`
+
 Generic N-bit synchronous up-counter with synchronous reset and clock-enable input. Counts from 0 to `2^G_BITS − 1` and wraps. Used inside `display_driver` to cycle through the 8 display digits.
 
 ## Simulations
 
-![tb_clk_en-img](img/tb_img/tb_clk_en.png)
-[tb_clk_en](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
+![tb_thermostat_top-img](img/tb_img/tb_thermostat_top.png)
+[tb_thermostat_top](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
 
 ---
 
-![tb_bin2seg-img](img/tb_img/tb_bin2seg.png)
-[tb_bin2seg](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
-
----
-
-![tb_debounce-img](img/tb_img/tb_debounce.png)
-[tb_debounce](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
-
----
-
-![tb_display_data_combiner-img](img/tb_img/tb_display_data_combiner.png)
-[tb_display_data_combiner](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
+![tb_adt7420-img](img/tb_img/tb_adt7420.png)
+[tb_adt7420](thermostat/thermostat.srcs/sim_1/new/tb_adt7420.vhd)
 
 ---
 
@@ -294,22 +297,33 @@ Generic N-bit synchronous up-counter with synchronous reset and clock-enable inp
 
 ---
 
+![tb_display_data_combiner-img](img/tb_img/tb_display_data_combiner.png)
+[tb_display_data_combiner](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
+
+---
+
 ![tb_display_driver-img](img/tb_img/tb_display_driver.png)
 [tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
 
----
+### Resources from labs
 
 ![tb_counter-img](img/tb_img/tb_counter.png)
 [tb_counter](thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd)
 
 ---
 
-![tb_adt7420-img](img/tb_img/tb_adt7420.png)
-[tb_adt7420](thermostat/thermostat.srcs/sim_1/new/tb_adt7420.vhd)
+![tb_clk_en-img](img/tb_img/tb_clk_en.png)
+[tb_clk_en](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
 
 ---
 
-> **Note:** A top-level integration testbench (`tb_thermostat_top`) was not completed — the I²C bus timing made cycle-accurate simulation impractical within the available time.
+![tb_bin2seg-img](img/tb_img/tb_bin2seg.png)
+[tb_bin2seg](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
+
+---
+
+![tb_debounce-img](img/tb_img/tb_debounce.png)
+[tb_debounce](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
 
 ## Resource utilization
 
@@ -332,8 +346,8 @@ Post-implementation LUT count: **1 696** (5.20%).
 
 ## References
 
-1. Analog Devices, *ADT7420 ±0.25°C Accuracy 16-Bit Digital I²C Temperature Sensor*, datasheet Rev. C. [Online]. Available: https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7420.pdf
-2. Digilent, *Nexys A7 Reference Manual*. [Online]. Available: https://digilent.com/reference/programmable-logic/nexys-a7/reference-manual
-3. A. Slater, *i2c-controller — A simple I²C controller in VHDL*, GitHub. [Online]. Available: https://github.com/aslak3/i2c-controller *(used as the basis for `i2c_controller.vhd`)*
+1. Analog Devices, *ADT7420 ±0.25°C Accuracy 16-Bit Digital I²C Temperature Sensor*, datasheet Rev. C. [Online]. Available: <https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7420.pdf>
+2. Digilent, *Nexys A7 Reference Manual*. [Online]. Available: <https://digilent.com/reference/programmable-logic/nexys-a7/reference-manual>
+3. A. Slater, *i2c-controller — A simple I²C controller in VHDL*, GitHub. [Online]. Available: <https://github.com/aslak3/i2c-controller> *(used as the basis for `i2c_controller.vhd`)*
 4. T. Fryza, *Digital Electronics 1 — Lab materials*, Brno University of Technology, 2026.
-5. Digilent, *Nexys A7 Master XDC constraints file*, GitHub. [Online]. Available: https://github.com/Digilent/digilent-xdc
+5. Digilent, *Nexys A7 Master XDC constraints file*, GitHub. [Online]. Available: <https://github.com/Digilent/digilent-xdc>
