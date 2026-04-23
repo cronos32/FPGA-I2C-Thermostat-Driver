@@ -41,7 +41,7 @@ entity adt7420_reader is
     generic (
         -- Main clock frequency in Hz. Used to derive the read interval.
         CLOCK_FREQ_HZ    : integer := 100_000_000;
-        -- Read interval in milliseconds (default 1000 ms = 1 Hz).
+        -- Read interval in milliseconds (default 1000 ms = 1 Hz). For simulation 2-10ms
         READ_INTERVAL_MS : integer := 1000
     );
     port (
