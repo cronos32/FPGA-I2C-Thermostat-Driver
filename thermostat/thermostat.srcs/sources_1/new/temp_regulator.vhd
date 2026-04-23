@@ -1,3 +1,10 @@
+-- temp_regulator: Purely combinational hysteresis thermostat controller.
+-- Compares current_temp against set_temp +/- HYST (5 = 0.5 deg C).
+-- Drives heat_en + led_red  when heating is needed,
+--         cool_en + led_blue when cooling is needed,
+--         led_green          when within the hysteresis band.
+-- No clock or reset; outputs update immediately with inputs.
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;

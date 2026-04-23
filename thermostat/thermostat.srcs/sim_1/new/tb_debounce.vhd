@@ -1,3 +1,8 @@
+-- tb_debounce: Testbench for debounce.
+-- Simulates noisy button presses and verifies that btn_state and btn_press
+-- respond only after four consecutive stable samples (2 ms each).
+-- Based on lab material by Tomas Fryza, Brno University of Technology.
+
 library ieee;
 use ieee.std_logic_1164.all;
 

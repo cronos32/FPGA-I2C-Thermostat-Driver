@@ -1,3 +1,11 @@
+-- ui_fsm: User-interface setpoint controller.
+-- Reads two debounced push-buttons (btn_up, btn_down) and maintains a
+-- temperature setpoint register in the range 55-400 (5.5-40.0 deg C),
+-- updated in steps of 5 (0.5 deg C) at a 10 Hz rate via an internal clk_en.
+-- A fast latch process captures short button-press pulses between slow ticks.
+-- Default setpoint on reset: 220 (22.0 deg C).
+-- Output temp_out is a 12-bit std_logic_vector in tenths of deg C.
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;

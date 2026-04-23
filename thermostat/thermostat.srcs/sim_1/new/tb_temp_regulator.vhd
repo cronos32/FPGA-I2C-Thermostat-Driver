@@ -1,6 +1,10 @@
+-- tb_temp_regulator: Testbench for temp_regulator.
+-- Applies set_temp / current_temp combinations and checks led / heat_en /
+-- cool_en outputs across heating, cooling, and in-range (hysteresis) cases.
+
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.numeric_std.all; -- NUTNÉ PRO TYP UNSIGNED A FUNKCI TO_UNSIGNED
+use ieee.numeric_std.all;
 
 entity tb_temp_regulator is
 end tb_temp_regulator;

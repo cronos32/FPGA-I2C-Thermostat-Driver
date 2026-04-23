@@ -54,7 +54,7 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 | `TMP_SDA` |  inout    | `std_logic`                    | I²C serial data line (open-drain, needs pull-up)   |
 | `TMP_SCL` |  inout    | `std_logic`                    | I²C serial clock line (open-drain, needs pull-up)  |
 
-> **Note:** `TMP_SDA` and `TMP_SCL` are declared `inout` because I²C is an open-drain bus — the FPGA must both drive the line low and read it back for ACK detection and data reception. This is the only place `inout` appears; all internal components use separate `_oe` / `_in` logic.
+> **Note:** `TMP_SDA` and `TMP_SCL` are declared `inout` because I²C is an open-drain bus — the FPGA must both drive the line low and read it back for ACK detection and data reception. This is the only place `inout` appears; all internal components use separate `in` / `out` logic.
 
 ## Block diagram
 
@@ -243,7 +243,7 @@ Wrapper around `i2c_controller` that performs periodic temperature reads from th
 
 ### [`ui_fsm`](thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd)
 
-User-interface state machine for setpoint adjustment. Internally instantiates `clk_en` (10 Hz tick) and two `debounce` instances for the up/down buttons. A fast process latches 1-cycle button-press pulses between slow ticks. A slow process (gated by the 10 Hz CE) increments or decrements the integer setpoint register by 0.5 °C steps (5 in tenths-of-degree units), clamped to the range 5.5 °C – 40.0 °C. The 12-bit result is output as a `std_logic_vector`.
+User-interface state machine for setpoint adjustment. Internally instantiates `clk_en` (10 Hz tick) and two `debounce` instances for the up/down buttons. A fast process latches 1-cycle button-press pulses between slow ticks. A slow process (gated by the 10 Hz CE) increments or decrements the integer setpoint register by 0.5 °C steps (5 in tenths-of-degree units), clamped to the range 5.0 °C – 40.0 °C. The 12-bit result is output as a `std_logic_vector`.
 
 ### [`temp_regulator`](thermostat/thermostat.srcs/sources_1/new/temp_regulator.vhd)
 
@@ -255,8 +255,7 @@ Purely combinational BCD converter. Takes two 12-bit unsigned values (`set_temp`
 
 ### [`display_driver`](thermostat/thermostat.srcs/sources_1/new/display_driver.vhd)
 
-
-Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (125 Hz tick, G_MAX = 800 000) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
+Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (500 Hz tick, G_MAX = 200 000) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
 
 ---
 
@@ -279,51 +278,61 @@ Generic N-bit synchronous up-counter with synchronous reset and clock-enable inp
 ## Simulations
 
 #### [tb_thermostat_top](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
+
 ![tb_thermostat_top-img](img/tb_img/tb_thermostat_top.png)
 
 ---
+
 #### [tb_adt7420](thermostat/thermostat.srcs/sim_1/new/tb_adt7420.vhd)
+
 ![tb_adt7420-img](img/tb_img/tb_adt7420.png)
 
 ---
 
 #### [tb_ui_fsm](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
+
 ![tb_ui_fsm-img](img/tb_img/tb_ui_fsm.png)
 
 ---
 
 #### [tb_temp_regulator](thermostat/thermostat.srcs/sim_1/new/tb_temp_regulator.vhd)
+
 ![tb_temp_regulator-img](img/tb_img/tb_temp_regulator.png)
 
 ---
 
 #### [tb_display_data_combiner](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
+
 ![tb_display_data_combiner-img](img/tb_img/tb_display_data_combiner.png)
 
 ---
 
 #### [tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
-![tb_display_driver-img](img/tb_img/tb_display_driver.png)
 
+![tb_display_driver-img](img/tb_img/tb_display_driver.png)
 
 ### Resources from labs
 
 #### [tb_bin2seg](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
+
 ![tb_bin2seg-img](img/tb_img/tb_bin2seg.png)
 
 ---
 
 #### [tb_debounce](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
+
 ![tb_debounce-img](img/tb_img/tb_debounce.png)
 
 ---
 
 #### [tb_clk_en](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
+
 ![tb_clk_en-img](img/tb_img/tb_clk_en.png)
 
 ---
 
 #### [tb_counter](thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd)
+
 ![tb_counter-img](img/tb_img/tb_counter.png)
 
 ## Resource utilization

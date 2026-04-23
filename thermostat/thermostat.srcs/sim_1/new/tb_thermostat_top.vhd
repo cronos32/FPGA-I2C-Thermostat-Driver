@@ -1,3 +1,7 @@
+-- tb_thermostat_top: Integration testbench for thermostat_top.
+-- Instantiates a behavioural ADT7420 I2C model and exercises the full
+-- design: sensor reads, button-driven setpoint changes, and LED outputs.
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;

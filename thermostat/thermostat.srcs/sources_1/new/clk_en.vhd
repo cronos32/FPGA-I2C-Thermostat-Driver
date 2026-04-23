@@ -1,23 +1,9 @@
-----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date: 03/05/2026 05:12:21 PM
--- Design Name: 
--- Module Name: clk_en - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
-----------------------------------------------------------------------------------
-
+-- clk_en: Parameterizable clock-enable pulse generator.
+-- Counts from 0 to G_MAX-1 and asserts ce for exactly one clock cycle
+-- when the counter wraps, producing a periodic enable pulse.
+-- Used throughout the design to create lower-rate processes without
+-- generating additional clocks (avoids clock domain crossings).
+-- Based on lab material by Tomas Fryza, Brno University of Technology.
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;

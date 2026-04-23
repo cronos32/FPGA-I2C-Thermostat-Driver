@@ -1,3 +1,9 @@
+-- debounce: Button debouncer with two-stage input synchronizer.
+-- Samples btn_in at 2 ms intervals (C_MAX = 200_000 cycles @ 100 MHz).
+-- Requires four consecutive identical samples before the output changes
+-- (shift-register filter). Outputs a debounced level on btn_state and
+-- a single-clock press pulse on btn_press on each rising edge.
+
 library ieee;
 use ieee.std_logic_1164.all;
 

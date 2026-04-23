@@ -1,3 +1,8 @@
+-- tb_counter: Testbench for counter.
+-- Verifies counting, wrap-around at 2^G_BITS - 1, synchronous reset,
+-- and that the counter freezes when en = '0'.
+-- Based on lab material by Tomas Fryza, Brno University of Technology.
+
 library ieee;
 use ieee.std_logic_1164.all;
 

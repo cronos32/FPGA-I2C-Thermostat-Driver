@@ -1,6 +1,9 @@
-
--- An I2C Controller in VHDL
--- https://github.com/aslak3/i2c-controller
+-- i2c_controller: Basic I2C master FSM.
+-- Adapted from https://github.com/aslak3/i2c-controller
+-- An internal 7-bit counter divides the 100 MHz clock to ~100 kHz SCL.
+-- The FSM sequences through START, address+R/W, data bytes, ACK/NAK, STOP.
+-- Open-drain operation: scl/sda are inout; driving 'Z' releases the line to
+-- the pull-up resistor, driving '0' pulls it low (via scl_local / sda_local).
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -40,7 +43,7 @@ architecture behavioral of i2c_controller is
 
 begin
     process (reset, clock)
-    variable i2c_clock_counter : UNSIGNED (6 downto 0);    -- Slows down the SCL from main clock
+    variable i2c_clock_counter : UNSIGNED (7 downto 0);    -- Slows down the SCL from main clock
     begin
         if (reset = '1') then
             i2c_clock_counter      := (others => '0');
@@ -57,7 +60,7 @@ begin
                 -- If we are running, inc the counter and extract the MSB for 2nd process
                 i2c_clock_counter := i2c_clock_counter + 1;
                 previous_running_clock <= running_clock;
-                running_clock <= i2c_clock_counter (6);
+                running_clock <= i2c_clock_counter (7);
             end if;
             if (pause_running = '1') then
                 -- Handle the 2nd process wanting to wait for a trigger (eg. the next byte to write)

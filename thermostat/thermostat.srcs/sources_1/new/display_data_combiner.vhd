@@ -1,10 +1,18 @@
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
-
+-- display_data_combiner: Combinational BCD converter for dual-temperature display.
+-- Converts two 12-bit unsigned temperatures (in tenths of deg C) into a
+-- 32-bit word for the display_driver. Each value is split into hundreds,
+-- tens, and ones BCD digits (4 bits each); the lowest nibble of each group
+-- is fixed to 0xC to show the letter 'C' on the 7-segment display.
+-- Values above 999 are clamped.
+--
 -- Output format (32 bits, active-low 7-seg encoding via bin2seg):
 --   [31:28] set hundreds   [27:24] set tens   [23:20] set ones   [19:16] set unit (C/F)
 --   [15:12] cur hundreds   [11:8]  cur tens   [7:4]   cur ones   [3:0]   cur unit (C/F)
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 entity display_data_combiner is
     port (

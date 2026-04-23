@@ -1,3 +1,7 @@
+-- tb_display_data_combiner: Testbench for display_data_combiner.
+-- Applies set_temp / current_temp values and checks that data_out carries
+-- correct BCD digits with 0xC in each unit position.
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;

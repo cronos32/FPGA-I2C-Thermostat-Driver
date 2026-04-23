@@ -1,3 +1,8 @@
+-- tb_clk_en: Testbench for clk_en.
+-- Verifies that ce pulses exactly once every G_MAX clock cycles and that
+-- synchronous reset correctly restarts the counter.
+-- Based on lab material by Tomas Fryza, Brno University of Technology.
+
 library ieee;
 use ieee.std_logic_1164.all;
 

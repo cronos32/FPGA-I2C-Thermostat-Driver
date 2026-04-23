@@ -1,3 +1,8 @@
+-- tb_bin2seg: Testbench for bin2seg.
+-- Applies all 16 possible 4-bit inputs and checks the active-low
+-- 7-segment output, including the special 0xC -> 'C' case.
+-- Based on lab material by Tomas Fryza, Brno University of Technology.
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;  -- Required for "to_unsigned"

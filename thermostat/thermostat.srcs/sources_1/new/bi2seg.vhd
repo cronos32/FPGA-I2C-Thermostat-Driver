@@ -1,15 +1,10 @@
+-- bin2seg: 4-bit binary to 7-segment decoder.
+-- Active-low segment outputs (0 = segment on, 1 = segment off).
+-- Covers hexadecimal digits 0-9 and letters A, b, C, d, E.
+-- Special code 0xC displays the letter 'C' for the Celsius unit indicator.
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx leaf cells in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
 
 entity bin2seg is
     Port ( bin : in std_logic_vector(3 downto 0);

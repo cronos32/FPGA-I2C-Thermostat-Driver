@@ -1,3 +1,7 @@
+-- tb_display_driver: Testbench for display_driver.
+-- Drives a static 32-bit data word and dp_en mask, then observes the
+-- time-multiplexed seg / anode / dp outputs across all 8 digit positions.
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;

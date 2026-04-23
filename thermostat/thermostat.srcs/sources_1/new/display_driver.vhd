@@ -1,22 +1,9 @@
-----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date: 03/12/2026 05:07:43 PM
--- Design Name: 
--- Module Name: display_driver - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
-----------------------------------------------------------------------------------
+-- display_driver: Time-multiplexed 8-digit 7-segment display driver.
+-- Uses clk_en (G_MAX = 800_000, 125 Hz tick) and a 3-bit counter to cycle
+-- through all eight display positions. A case statement selects the active
+-- 4-bit nibble from the 32-bit data word and passes it to bin2seg for
+-- segment decoding. Decimal-point output is indexed from the dp_en mask.
+-- Anode outputs are active-low (one '0' active per digit at a time).
 
 
 library IEEE;
@@ -87,7 +74,7 @@ begin
     -- Clock enable generator for refresh timing
     ------------------------------------------------------------------------
     clock_0 : clk_en
-        generic map ( G_MAX => 800_000 )  -- Adjust for flicker-free multiplexing
+        generic map ( G_MAX => 200_000 )  -- Adjust for flicker-free multiplexing
         port map (                   -- For simulation: 32
             clk => clk,              -- For implementation: 3_200_000
             rst => rst,
