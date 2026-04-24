@@ -115,9 +115,6 @@ architecture Behavioral of thermostat_top is
     signal sig_temp_vector : std_logic_vector(15 downto 0);
     signal sig_temp_valid  : std_logic;
     
-    signal sig_sda : std_logic;
-    signal sig_scl : std_logic;
-
 begin
     
     sig_set_temp <= unsigned(sig_set_temp_slv);
@@ -169,8 +166,8 @@ begin
             temperature      => sig_temp_vector,  -- Connect to intermediate vector
             temp_valid       => sig_temp_valid,
             error            => led(0),             -- Leave open or connect to an LED
-            scl              => sig_scl,
-            sda              => sig_sda
+            scl              => TMP_SCL,
+            sda              => TMP_SDA
         );
 
     display_0 : display_driver
@@ -204,9 +201,11 @@ begin
         cool_en =>  cool_en
     );
     
-    TMP_SDA <= sig_sda;
-    TMP_SCL <= sig_scl;
-    j_sda <= sig_sda;
-    j_scl <= sig_scl;
+    -- Debug header mirrors the real bus state using open-drain (tri-state)
+    -- semantics. Reading TMP_SDA/TMP_SCL at the top-level returns the actual
+    -- pin voltage (IOBUF input), so the logic analyzer on j_sda/j_scl sees
+    -- exactly what the sensor sees, including slave-driven ACK/data bits.
+    j_sda <= '0' when TMP_SDA = '0' else 'Z';
+    j_scl <= '0' when TMP_SCL = '0' else 'Z';
 
 end Behavioral;

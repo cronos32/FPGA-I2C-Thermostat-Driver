@@ -129,15 +129,20 @@ begin
                         -- Tri-state the SDA as an input
                         sda_local <= '1';
                         if (clock_flip = '1') then
-                            -- Latch the SDA input
+                            -- SCL is high: latch the slave's ACK bit AND decide
+                            -- what to do next, in the SAME half-cycle. Keeping
+                            -- the state transition inside this branch ensures
+                            -- the full 9th (ACK) clock pulse is actually
+                            -- generated before we leave the state. Mirrors the
+                            -- READING_ACK structure below.
                             ack_error <= sda;
-                        else -- fix 
                             if (last_byte = '1') then
                                 -- Last byte to write? Generate a STOP sequence
                                 state <= STOP1;
                             else
-                                -- Otherwise wait for the next trigger. We might be reading or writing now, as
-                                -- this byte sent might have been the slave address
+                                -- Otherwise wait for the next trigger. We might
+                                -- be reading or writing now, as this byte sent
+                                -- might have been the slave address.
                                 pause_running <= '1';
                                 if (read_write = '0') then
                                     state <= WRITE_WAITING;
