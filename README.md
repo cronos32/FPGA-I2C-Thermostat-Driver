@@ -227,61 +227,30 @@ stateDiagram-v2
     S_RD_DONE --> S_IDLE : pulse temp_valid convert raw→tenths °C
 ```
 
-## Module descriptions
+## Module descriptions and simulations
 
 ### [`thermostat_top`](thermostat/thermostat.srcs/sources_1/new/thermostat_top.vhd)
 
 Top-level entity that wires all subsystems together. Instantiates the sensor reader, UI FSM, display combiner, display driver, and temperature regulator. Contains the only `inout` ports in the design (`TMP_SDA`, `TMP_SCL`) as required by the physical I²C bus. A synchronous process clamps the raw signed 16-bit temperature from the sensor into an unsigned 12-bit value (tenths of °C) for use by the display and regulator.
 
+#### [tb_thermostat_top](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
+
+![tb_thermostat_top-img](img/tb_img/tb_thermostat_top.png)
+---
+
 ### [`i2c_controller`](thermostat/thermostat.srcs/sources_1/new/i2c_controller.vhd)
 
 Basic I²C master FSM. An internal 7-bit counter divides the 100 MHz clock down to generate a bit clock (`running_clock`). The FSM advances on each rising edge of `running_clock` and sequences through START, address+R/W, data bytes, ACK/NAK, and STOP states. Open-drain operation is implemented via `inout` ports (`scl`, `sda`) driven with tri-state logic using internal signals `scl_local` and `sda_local` — `'1'` releases the line to `'Z'` (pull-up), `'0'` pulls the line low. Adapted from [aslak3/i2c-controller](https://github.com/aslak3/i2c-controller).
 
+#### [`tb_i2c_controller`](thermostat/thermostat.srcs/sim_1/new/tb_i2c_controller.vhd)
+
+
+![tb_i2c_controller-img](img/tb_img/tb_i2c_controller.png)
+---
+
 ### [`adt7420_reader`](thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd)
 
 Wrapper around `i2c_controller` that performs periodic temperature reads from the ADT7420 sensor. At startup it writes the configuration register (resolution selection). Then, every `READ_INTERVAL_MS` milliseconds, it executes a 5-trigger read sequence: address+W → pointer byte → RESTART+address+R → read MSB → read LSB. A separate combinational process converts the raw 16-bit two's-complement ADC value to tenths of °C (signed). Temperature is output as a 16-bit signed vector; `temp_valid` pulses high for one clock cycle per completed reading.
-
-### [`ui_fsm`](thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd)
-
-User-interface state machine for setpoint adjustment. Internally instantiates `clk_en` (10 Hz tick) and two `debounce` instances for the up/down buttons. A fast process latches 1-cycle button-press pulses between slow ticks. A slow process (gated by the 10 Hz CE) increments or decrements the integer setpoint register by 0.5 °C steps (5 in tenths-of-degree units), clamped to the range 5.0 °C – 40.0 °C. The 12-bit result is output as a `std_logic_vector`.
-
-### [`temp_regulator`](thermostat/thermostat.srcs/sources_1/new/temp_regulator.vhd)
-
-Purely combinational thermostat controller with hysteresis. Compares `current_temp` against `set_temp ± HYST` (HYST = 5, i.e. ±0.5 °C). Drives `led_red` and `heat_en` when heating is required, `led_blue` and `cool_en` when cooling is required, and `led_green` when the temperature is within the hysteresis band. No clock or reset — output changes immediately with inputs.
-
-### [`display_data_combiner`](thermostat/thermostat.srcs/sources_1/new/display_data_combiner.vhd)
-
-Purely combinational BCD converter. Takes two 12-bit unsigned values (`set_temp` and `current_temp`, in tenths of °C) and packs them into a single 32-bit word for the display driver. Each value is split into hundreds, tens, and ones digits (4 bits each), with the lowest nibble fixed to `0xC` to display the letter "C" (degrees Celsius) on the rightmost digit of each group. Values above 999 are clamped.
-
-### [`display_driver`](thermostat/thermostat.srcs/sources_1/new/display_driver.vhd)
-
-Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (500 Hz tick, G_MAX = 200 000) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
-
----
-
-### [`bin2seg`](thermostat/thermostat.srcs/sources_1/new/bi2seg.vhd)
-
-Purely combinational 4-bit binary to 7-segment decoder. Covers hexadecimal digits 0–9, A–F with active-low segment outputs (a '0' turns a segment on). The special code `0xC` displays the letter "C" used for the Celsius unit indicator.
-
-### [`debounce`](thermostat/thermostat.srcs/sources_1/new/debounce.vhd)
-
-Button debouncer with synchronizer. Samples the raw button input at 2 ms intervals via `clk_en`. Four consecutive equal samples are required before the debounced output changes state (shift-register majority filter). A one-cycle `btn_press` pulse is generated on the rising edge of the debounced output. A two-flip-flop input synchronizer prevents metastability.
-
-### [`clk_en`](thermostat/thermostat.srcs/sources_1/new/clk_en.vhd)
-
-Parameterizable clock-enable generator. Counts from 0 to `G_MAX − 1` and asserts `ce` for exactly one clock cycle when the count wraps, producing a periodic enable pulse. Used throughout the design to create lower-rate processes without generating additional clocks.
-
-### [`counter`](thermostat/thermostat.srcs/sources_1/new/counter.vhd)
-
-Generic N-bit synchronous up-counter with synchronous reset and clock-enable input. Counts from 0 to `2^G_BITS − 1` and wraps. Used inside `display_driver` to cycle through the 8 display digits.
-
-## Simulations
-
-#### [tb_thermostat_top](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
-
-![tb_thermostat_top-img](img/tb_img/tb_thermostat_top.png)
-
----
 
 #### [tb_adt7420](thermostat/thermostat.srcs/sim_1/new/tb_adt7420.vhd)
 
@@ -289,11 +258,19 @@ Generic N-bit synchronous up-counter with synchronous reset and clock-enable inp
 
 ---
 
+### [`ui_fsm`](thermostat/thermostat.srcs/sources_1/new/ui_fsm.vhd)
+
+User-interface state machine for setpoint adjustment. Internally instantiates `clk_en` (10 Hz tick) and two `debounce` instances for the up/down buttons. A fast process latches 1-cycle button-press pulses between slow ticks. A slow process (gated by the 10 Hz CE) increments or decrements the integer setpoint register by 0.5 °C steps (5 in tenths-of-degree units), clamped to the range 5.0 °C – 40.0 °C. The 12-bit result is output as a `std_logic_vector`.
+
 #### [tb_ui_fsm](thermostat/thermostat.srcs/sim_1/new/tb_ui_fsm.vhd)
 
 ![tb_ui_fsm-img](img/tb_img/tb_ui_fsm.png)
 
 ---
+
+### [`temp_regulator`](thermostat/thermostat.srcs/sources_1/new/temp_regulator.vhd)
+
+Purely combinational thermostat controller with hysteresis. Compares `current_temp` against `set_temp ± HYST` (HYST = 5, i.e. ±0.5 °C). Drives `led_red` and `heat_en` when heating is required, `led_blue` and `cool_en` when cooling is required, and `led_green` when the temperature is within the hysteresis band. No clock or reset — output changes immediately with inputs.
 
 #### [tb_temp_regulator](thermostat/thermostat.srcs/sim_1/new/tb_temp_regulator.vhd)
 
@@ -301,17 +278,31 @@ Generic N-bit synchronous up-counter with synchronous reset and clock-enable inp
 
 ---
 
+### [`display_data_combiner`](thermostat/thermostat.srcs/sources_1/new/display_data_combiner.vhd)
+
+Purely combinational BCD converter. Takes two 12-bit unsigned values (`set_temp` and `current_temp`, in tenths of °C) and packs them into a single 32-bit word for the display driver. Each value is split into hundreds, tens, and ones digits (4 bits each), with the lowest nibble fixed to `0xC` to display the letter "C" (degrees Celsius) on the rightmost digit of each group. Values above 999 are clamped.
+
 #### [tb_display_data_combiner](thermostat/thermostat.srcs/sim_1/new/tb_display_data_combiner.vhd)
 
 ![tb_display_data_combiner-img](img/tb_img/tb_display_data_combiner.png)
 
 ---
 
+### [`display_driver`](thermostat/thermostat.srcs/sources_1/new/display_driver.vhd)
+
+Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (500 Hz tick, G_MAX = 200 000) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
+
 #### [tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
 
 ![tb_display_driver-img](img/tb_img/tb_display_driver.png)
 
+
 ### Resources from labs
+---
+
+### [`bin2seg`](thermostat/thermostat.srcs/sources_1/new/bi2seg.vhd)
+
+Purely combinational 4-bit binary to 7-segment decoder. Covers hexadecimal digits 0–9, A–F with active-low segment outputs (a '0' turns a segment on). The special code `0xC` displays the letter "C" used for the Celsius unit indicator.
 
 #### [tb_bin2seg](thermostat/thermostat.srcs/sim_1/new/tb_bin2seg.vhd)
 
@@ -319,17 +310,29 @@ Generic N-bit synchronous up-counter with synchronous reset and clock-enable inp
 
 ---
 
+### [`debounce`](thermostat/thermostat.srcs/sources_1/new/debounce.vhd)
+
+Button debouncer with synchronizer. Samples the raw button input at 2 ms intervals via `clk_en`. Four consecutive equal samples are required before the debounced output changes state (shift-register majority filter). A one-cycle `btn_press` pulse is generated on the rising edge of the debounced output. A two-flip-flop input synchronizer prevents metastability.
+
 #### [tb_debounce](thermostat/thermostat.srcs/sim_1/new/tb_debounce.vhd)
 
 ![tb_debounce-img](img/tb_img/tb_debounce.png)
 
 ---
 
+### [`clk_en`](thermostat/thermostat.srcs/sources_1/new/clk_en.vhd)
+
+Parameterizable clock-enable generator. Counts from 0 to `G_MAX − 1` and asserts `ce` for exactly one clock cycle when the count wraps, producing a periodic enable pulse. Used throughout the design to create lower-rate processes without generating additional clocks.
+
 #### [tb_clk_en](thermostat/thermostat.srcs/sim_1/new/tb_clk_en.vhd)
 
 ![tb_clk_en-img](img/tb_img/tb_clk_en.png)
 
 ---
+
+### [`counter`](thermostat/thermostat.srcs/sources_1/new/counter.vhd)
+
+Generic N-bit synchronous up-counter with synchronous reset and clock-enable input. Counts from 0 to `2^G_BITS − 1` and wraps. Used inside `display_driver` to cycle through the 8 display digits.
 
 #### [tb_counter](thermostat/thermostat.srcs/sim_1/new/tb_counter.vhd)
 
