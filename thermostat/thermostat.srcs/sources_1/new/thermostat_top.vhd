@@ -84,7 +84,7 @@ architecture Behavioral of thermostat_top is
         );
     end component ui_fsm;
 
-    component adt7420_reader is
+    component adt7420_reader_simple is
         generic (
         CLOCK_FREQ_HZ    : integer;
         READ_INTERVAL_MS : integer
@@ -92,15 +92,14 @@ architecture Behavioral of thermostat_top is
         port (
             clock            : in    STD_LOGIC;                       -- Master clock
             reset            : in    STD_LOGIC;                       -- Active-high reset
-            sensor_address   : in    STD_LOGIC_VECTOR (6 downto 0);   -- Typ. "1001000" (0x48)
-            resolution_16bit : in    STD_LOGIC;                       -- 0=13-bit, 1=16-bit
-            temperature      : out   STD_LOGIC_VECTOR (15 downto 0);  -- Signed tenths of C
+            sensor_address   : in    STD_LOGIC_VECTOR (6 downto 0);   -- Nexys A7: "1001011" (0x4B)
+            temperature      : out   STD_LOGIC_VECTOR (15 downto 0);  -- Signed tenths of C (13-bit mode)
             temp_valid       : out   STD_LOGIC;                       -- 1-cycle pulse per reading
             error            : out   STD_LOGIC;                       -- Sticky: any byte NAKed
             scl              : inout STD_LOGIC;
             sda              : inout STD_LOGIC
         );
-    end component adt7420_reader;
+    end component adt7420_reader_simple;
     
     signal sig_display_data : std_logic_vector (31 downto 0); --xxxCxxxC
     signal sig_dp    : std_logic_vector(7 downto 0):= "10111011";  -- decimal points "10111011"
@@ -153,19 +152,18 @@ begin
     ------------------------------------------------------------------
     -- ADT7420 Temperature Sensor Reader Instantiation
     ------------------------------------------------------------------
-    sensor_reader : adt7420_reader
-        generic map ( 
+    sensor_reader : adt7420_reader_simple
+        generic map (
             CLOCK_FREQ_HZ    => 100_000_000,
             READ_INTERVAL_MS => 1000 -- Read once per second
         )
         port map (
-            clock            => clk,              -- Corrected port name
-            reset            => btnc,             -- Corrected port name
+            clock            => clk,
+            reset            => btnc,
             sensor_address   => "1001011",        -- Nexys A7: A1=1, A0=1 -> 0x4B
-            resolution_16bit => '0',              -- Use 16-bit for better accuracy = 1
-            temperature      => sig_temp_vector,  -- Connect to intermediate vector
+            temperature      => sig_temp_vector,
             temp_valid       => sig_temp_valid,
-            error            => led(0),             -- Leave open or connect to an LED
+            error            => led(0),
             scl              => TMP_SCL,
             sda              => TMP_SDA
         );
