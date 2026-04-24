@@ -162,7 +162,7 @@ begin
             clock            => clk,              -- Corrected port name
             reset            => btnc,             -- Corrected port name
             sensor_address   => "1001011",        -- Nexys A7: A1=1, A0=1 -> 0x4B
-            resolution_16bit => '1',              -- Use 16-bit for better accuracy
+            resolution_16bit => '0',              -- Use 16-bit for better accuracy = 1
             temperature      => sig_temp_vector,  -- Connect to intermediate vector
             temp_valid       => sig_temp_valid,
             error            => led(0),             -- Leave open or connect to an LED
