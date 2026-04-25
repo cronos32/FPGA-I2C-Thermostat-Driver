@@ -84,23 +84,21 @@ architecture Behavioral of thermostat_top is
         );
     end component ui_fsm;
 
-    component adt7420_reader_minimal is
+    component adt7420_reader_digikey is
         generic (
-        CLOCK_FREQ_HZ    : integer;
-        SCL_FREQ_HZ      : integer;
-        READ_INTERVAL_MS : integer
+            CLOCK_FREQ_HZ : integer;
+            SENSOR_ADDR   : STD_LOGIC_VECTOR(6 downto 0)
         );
         port (
-            clock          : in    STD_LOGIC;
-            reset          : in    STD_LOGIC;
-            sensor_address : in    STD_LOGIC_VECTOR (6 downto 0);   -- Nexys A7: "1001011" (0x4B)
-            temperature    : out   STD_LOGIC_VECTOR (15 downto 0);  -- Signed tenths of C (13-bit mode)
-            temp_valid     : out   STD_LOGIC;                       -- 1-cycle pulse per reading
-            sda_dir        : out   STD_LOGIC;                       -- '1'=master, '0'=slave (debug)
-            scl            : inout STD_LOGIC;
-            sda            : inout STD_LOGIC
+            clock       : in    STD_LOGIC;
+            reset       : in    STD_LOGIC;                       -- active-high
+            temperature : out   STD_LOGIC_VECTOR (15 downto 0);  -- signed tenths of C
+            temp_valid  : out   STD_LOGIC;                       -- 1-cycle pulse per reading
+            ack_error   : out   STD_LOGIC;
+            scl         : inout STD_LOGIC;
+            sda         : inout STD_LOGIC
         );
-    end component adt7420_reader_minimal;
+    end component adt7420_reader_digikey;
     
     signal sig_display_data : std_logic_vector (31 downto 0); --xxxCxxxC
     signal sig_dp    : std_logic_vector(7 downto 0):= "10111011";  -- decimal points "10111011"
@@ -153,21 +151,19 @@ begin
     ------------------------------------------------------------------
     -- ADT7420 Temperature Sensor Reader Instantiation
     ------------------------------------------------------------------
-    sensor_reader : adt7420_reader_minimal
+    sensor_reader : adt7420_reader_digikey
         generic map (
-            CLOCK_FREQ_HZ    => 100_000_000,
-            SCL_FREQ_HZ      => 100_000,
-            READ_INTERVAL_MS => 1000 -- Read once per second
+            CLOCK_FREQ_HZ => 100_000_000,
+            SENSOR_ADDR   => "1001011"            -- Nexys A7: A1=1, A0=1 -> 0x4B
         )
         port map (
-            clock            => clk,
-            reset            => btnc,
-            sensor_address   => "1001011",        -- Nexys A7: A1=1, A0=1 -> 0x4B
-            temperature      => sig_temp_vector,
-            temp_valid       => sig_temp_valid,
-            sda_dir          => led(0),           -- LED debug: lit when master drives SDA
-            scl              => TMP_SCL,
-            sda              => TMP_SDA
+            clock       => clk,
+            reset       => btnc,
+            temperature => sig_temp_vector,
+            temp_valid  => sig_temp_valid,
+            ack_error   => led(0),                -- ack_error from Larson's i2c_master
+            scl         => TMP_SCL,
+            sda         => TMP_SDA
         );
 
     display_0 : display_driver
