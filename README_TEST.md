@@ -19,13 +19,34 @@ USB stick) so you don't waste the 2-hour slot in Vivado.
 | `testing_sr3` | `testing_Sr` + c43fa01 | Same as Build A + `resolution_16bit => '0'` in `thermostat_top` | **Build B** — rules out 16-bit/13-bit math as the cause of garbage data |
 | `testing_i2c4` | `testing_sr3` + 718c4c5 | Same as B + new `adt7420_reader_simple.vhd` used instead of the full reader — no config write, no pointer write, no repeated START; just `S addr+R → MSB → LSB → P` | **Build C** — maximum simplicity. Eliminates every write/Sr code path |
 | `testing_i2c5` | `testing_i2c4` + 5cd51ec | Same as C + rewritten `i2c_controller`: added `WRITING_ACK_LOW` / `READING_ACK_LOW` states, SCL divider widened to 10 bits (~98 kHz), `clock_flip` reset explicitly in `WRITE_WAITING` / `READ_WAITING` | **Build D** — lowest risk on Sr/false-STOP. Bus parks at SCL=0 between bytes |
+| `testing_i2c6` | `testing_i2c5` + c03a7f6 | New file `adt7420_reader_minimal.vhd` — completely standalone, **no `i2c_controller` instantiated**. One FSM does everything: SCL/SDA bit-banged directly off a tick counter (4 quarters per bit period). `thermostat_top` instantiates the minimal reader and routes its `sda_dir` debug signal to `led(0)`. Inspired by David J. Marion's Verilog I2C master for the same Nexys A7 sensor. | **Build E** — last-resort simplicity. If A–D all fail, this rules out every inter-module signaling bug because there *are* no inter-module signals |
 
-Currently checked-out branch: `testing_Sr` (Build A).
-
-A note on the two histories: Builds A → B → C → D form a linear progression
+A note on the histories: Builds A → B → C → D → E form a linear progression
 off `testing_Sr` where each layer eliminates one more variable. Build A2
 is a parallel attempt rooted at the original `1efb18f`, with a different
 theory about where the bug is.
+
+### Why Build E is qualitatively different from A–D
+
+A–D all share the same architecture: a separate `i2c_controller.vhd`
+generates SCL/SDA bit transitions, and `adt7420_reader*.vhd` orchestrates
+byte-level transactions via `trigger` / `restart` / `last_byte` / `busy`
+handshake signals. Every regression we've hit (`else`-branch ACK
+truncation, missing 9th clock, Sr→S decoder confusion, `clock_flip`
+desync) lives at the boundary between those two modules.
+
+Build E **deletes that boundary**. The whole sensor read — START, 8
+address bits, ACK, MSB, master ACK, LSB, master NAK, STOP — runs as one
+flat case statement timed by a single tick counter. There is no
+`trigger`, no `restart`, no `pause_running`, no `clock_flip`. Each I2C
+bit period is exactly 4 quarters, with SCL transitions at fixed tick
+values. Slave SDA is sampled at `tick = 3*QUARTER` (mid-SCL-high), the
+most stable point. The address `0x4B` and read mode are hard-coded into
+the `addr_byte`. The 13-bit conversion is done inline in `S_DONE`.
+
+If Build E shows `FF FF` on the scope too, the bug is **not** in any FSM
+sequencing — it's physical: pullup, IOBUF synthesis, slave power, or
+slave address.
 
 ---
 
@@ -57,39 +78,59 @@ the bitstream, so you don't walk in with a broken build:
   - `running_clock <= i2c_clock_counter (9);`
   - State type includes `WRITING_ACK_LOW` and `READING_ACK_LOW`
   - `WRITE_WAITING` and `READ_WAITING` contain `clock_flip := '0';`
+- **testing_i2c6** only:
+  - `thermostat_top.vhd` instantiates `adt7420_reader_minimal` (NOT
+    `adt7420_reader` or `_simple`). `i2c_controller` is **not**
+    instantiated anywhere — confirm by searching the elaborated design
+  - `adt7420_reader_minimal.vhd` exists and `QUARTER` constant
+    evaluates to `250` (for 100 MHz → 100 kHz)
+  - `led(0)` is driven by the reader's `sda_dir` output (debug)
+  - No `error` output port on this reader
 
 ---
 
 ## Flash order and decision tree
 
-Start with **Build D (testing_i2c5)** — highest likelihood of success.
+Start with **Build E (testing_i2c6)** — fewest moving parts, cleanest
+timing, hardest to get wrong. Fall back to D / C / B / A if it fails.
 
 ```
- Flash D ──► scope shows S 4BR~a <MSB> <LSB> P with real bytes?
+ Flash E ──► scope shows S 4BR~a <MSB> <LSB> P with real bytes?
    │
    ├── YES → You're done. Confirm 7-seg display shows plausible temp.
+   │        led(0) (sda_dir) should pulse: lit during master phases
+   │        (START, addr send, ACKs, NAK, STOP), dim during read phases.
    │
    └── NO ──► What's on the scope?
              │
-             ├── Still 4BWa then nothing
-             │   → FSM froze after 1st byte. Check counter is 10 bits and
-             │     `running_clock` uses bit 9. Verify `busy_d` edge detect
-             │     in the reader (simple reader uses the same pattern).
+             ├── No SCL clocks at all (bus idle, both lines high)
+             │   → Reader stuck in S_POR or S_IDLE. Wait 1+ second after
+             │     btnc release; if still nothing, btnc may be stuck or
+             │     QUARTER constant is wrong (verify it = 250 for 100kHz)
              │
-             ├── S 4BR~a FF FF P (address ACKed, but data still all 1s)
-             │   → Slave ACKs address but can't drive SDA during read.
-             │     Most likely TMP_SDA is not a true IOBUF in synth.
-             │     Open implemented design, find TMP_SDA net, confirm it
-             │     routes to an IOBUF primitive (not OBUFT + IBUF split).
+             ├── SCL clocking but SDA stays high entire transaction
+             │   → Address byte sent but slave didn't ACK. Either wrong
+             │     slave address (try 0x48 / "1001000") or sensor dead.
+             │     led(0) should momentarily go LOW during ADDR_ACK
+             │     phase if slave ACKed -- if not, slave isn't responding
              │
-             ├── Scope shows S 4BR with NAK on the address
-             │   → Wrong slave address or sensor dead. Verify 0x4B on
-             │     scope (96h = 10010110 for write, 97h for read).
-             │     Try "1001000" (0x48) as a sanity test.
+             ├── S 4BR~a FF FF P (address ACKed, data still 1s)
+             │   → Slave ACKs but doesn't drive data. led(0) should
+             │     stay LOW throughout S_MSB and S_LSB (slave's turn).
+             │     If FPGA SDA pin is also driving high during these
+             │     phases, IOBUF didn't synthesize as tri-state. Open
+             │     implemented design and verify TMP_SDA routes to an
+             │     IOBUF primitive, not split OBUFT+IBUF
              │
-             └── Nothing on scope at all (no SCL clocks)
-                 → Reader FSM stuck in S_STARTUP or S_IDLE, or reset
-                   held high. Probe error LED (led[0]) and check btnc.
+             └── Garbage / partial bytes
+                 → SCL too fast for sensor wiring. Set SCL_FREQ_HZ
+                   generic to 50_000 (50 kHz) and re-flash. QUARTER
+                   then = 500
+ │
+ ▼
+ Fall back to Build D (testing_i2c5) — uses i2c_controller with the
+ _LOW states. If D works and E doesn't, bug is in the minimal reader's
+ timing (probably QUARTER calculation or sample point).
  │
  ▼
  Fall back to Build C (testing_i2c4) — rules out the _ACK_LOW rework.
@@ -110,9 +151,10 @@ Start with **Build D (testing_i2c5)** — highest likelihood of success.
  scope shots.
  │
  ▼
- If none of A / A2 / B / C / D work, the problem is either in
- `i2c_controller`'s data path or the physical pin/pullup chain, not in
- the sequencer logic.
+ If none of A / A2 / B / C / D / E work, the problem is physical
+ (pullup, IOBUF synthesis, sensor power) -- not protocol. Probe SDA
+ directly at the sensor pin and try shorting it to ground manually
+ to isolate FPGA-side from sensor-side.
 ```
 
 ---
@@ -128,11 +170,15 @@ Assume room temperature ~22 °C, ADT7420 at address `0x4B`.
 - `<MSB> <LSB>` in **16-bit mode (Build A)** ≈ `0x0B 0x00` (22.0 °C raw code = 352 << 4 = 0x1600, MSB=0x16 actually — recompute per reading)
 - In **13-bit mode (Build B)** ≈ `0x0B 0x0X` where low 3 bits of LSB are status flags
 
-### Build C / D (direct read, no pointer write)
+### Build C / D / E (direct read, no pointer write)
+
 ```
  S  4BR~a  <MSB>~a  <LSB>~a  P
 ```
+
 - 13-bit mode only. MSB ≈ `0x0B` for ~22 °C, LSB low 3 bits = flags.
+- Build E adds a debug LED on `led(0)` driven by `sda_dir` — should
+  flash visibly each second as the reader cycles through phases.
 
 ### On the `temperature` output (`sig_temp_vector`)
 - Tenths of a degree, signed. 22.5 °C → `225` → `0x00E1`
