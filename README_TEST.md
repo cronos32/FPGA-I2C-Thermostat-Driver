@@ -4,7 +4,7 @@ Short living doc for the FPGA bench session. Goal: get a real temperature
 reading from the ADT7420 on `TMP_SDA` / `TMP_SCL` (Nexys A7) instead of
 `0xFF 0xFF`, and fix the "S vs Sr" labeling on the scope decoder.
 
-Bring **all four branches** to the session pre-synthesised (bitstreams on a
+Bring **all five branches** to the session pre-synthesised (bitstreams on a
 USB stick) so you don't waste the 2-hour slot in Vivado.
 
 ---
@@ -15,12 +15,17 @@ USB stick) so you don't waste the 2-hour slot in Vivado.
 |---|---|---|---|
 | `main` | — | Original broken baseline | Reference only — do not flash |
 | `testing_Sr` | `main` + e6afb1f + ac1976d | Original `adt7420_reader`; `i2c_controller` WRITING_ACK transition put back *inside* `if clock_flip='1'` (the bad `else` removed); `thermostat_top` connects `adt7420_reader` directly to `TMP_SDA`/`TMP_SCL`, debug header mirrors pin state via `'0' when TMP_SDA='0' else 'Z'` | **Build A** — minimal fix, keeps the pointer-write + Sr flow. If this works, you keep 16-bit mode support. |
-| `testing_sr3` | `testing_Sr` + c43fa01 | Same as A + `resolution_16bit => '0'` in `thermostat_top` | **Build B** — rules out 16-bit/13-bit math as the cause of garbage data |
+| `2-testing_Sr` | `main` + 1efb18f + 63df38d | Only `i2c_controller.vhd` rewritten. Keeps an `else` branch in WRITING_ACK (9th-clock pulse still truncated like the original regression) **but** moves the `restart='1'` check out of the top-of-process unconditional check and into WRITING_ACK's `else` branch. Reader and `thermostat_top` are unchanged from `main`. | **Build A2** — alternative restart timing. Caveat: with the unmodified reader, `restart` is asserted simultaneously with `trigger` and deasserted long before WRITING_ACK is reached, so Sr likely never fires. Worth flashing once as a comparison data-point. |
+| `testing_sr3` | `testing_Sr` + c43fa01 | Same as Build A + `resolution_16bit => '0'` in `thermostat_top` | **Build B** — rules out 16-bit/13-bit math as the cause of garbage data |
 | `testing_i2c4` | `testing_sr3` + 718c4c5 | Same as B + new `adt7420_reader_simple.vhd` used instead of the full reader — no config write, no pointer write, no repeated START; just `S addr+R → MSB → LSB → P` | **Build C** — maximum simplicity. Eliminates every write/Sr code path |
-| `testing_i2c5` ← **current** | `testing_i2c4` + 5cd51ec | Same as C + rewritten `i2c_controller`: added `WRITING_ACK_LOW` / `READING_ACK_LOW` states, SCL divider widened to 10 bits (~98 kHz), `clock_flip` reset explicitly in `WRITE_WAITING` / `READ_WAITING` | **Build D** — lowest risk. Bus parks at SCL=0 between bytes, no false-STOP risk |
+| `testing_i2c5` | `testing_i2c4` + 5cd51ec | Same as C + rewritten `i2c_controller`: added `WRITING_ACK_LOW` / `READING_ACK_LOW` states, SCL divider widened to 10 bits (~98 kHz), `clock_flip` reset explicitly in `WRITE_WAITING` / `READ_WAITING` | **Build D** — lowest risk on Sr/false-STOP. Bus parks at SCL=0 between bytes |
 
-Dead/abandoned branches (don't flash):
-- `2-testing_Sr` — earlier dead-end Sr attempt (63df38d)
+Currently checked-out branch: `testing_Sr` (Build A).
+
+A note on the two histories: Builds A → B → C → D form a linear progression
+off `testing_Sr` where each layer eliminates one more variable. Build A2
+is a parallel attempt rooted at the original `1efb18f`, with a different
+theory about where the bug is.
 
 ---
 
@@ -40,6 +45,10 @@ the bitstream, so you don't walk in with a broken build:
 - **testing_Sr / testing_sr3** — `i2c_controller.vhd` WRITING_ACK: state
   transition is **inside** `if clock_flip = '1'`, no `else` branch, no
   comment `-- fix` left behind
+- **2-testing_Sr** — `i2c_controller.vhd` WRITING_ACK *does* still have an
+  `else` branch (intentional in this variant); the unconditional
+  `if (restart='1') then state<=RESTART1` should be **gone** from the top
+  of process 2 — restart is checked only inside WRITING_ACK
 - **testing_i2c4 / testing_i2c5** — `thermostat_top.vhd` instantiates
   `adt7420_reader_simple` (not `adt7420_reader`); no `resolution_16bit`
   port on the simple version
@@ -93,8 +102,17 @@ Start with **Build D (testing_i2c5)** — highest likelihood of success.
  ▼
  Fall back to Build A (testing_Sr) — rules out both the simple reader
  and 13-bit mode.
- If none of A–D work, the problem is either in `i2c_controller`'s data
- path or the physical pin/pullup chain, not in the sequencer logic.
+ │
+ ▼
+ Optional sidecheck: Build A2 (2-testing_Sr) — different restart-timing
+ theory. Expected to behave like A or worse (truncated 9th clock
+ because of the `else` branch); flash mainly to capture comparison
+ scope shots.
+ │
+ ▼
+ If none of A / A2 / B / C / D work, the problem is either in
+ `i2c_controller`'s data path or the physical pin/pullup chain, not in
+ the sequencer logic.
 ```
 
 ---
