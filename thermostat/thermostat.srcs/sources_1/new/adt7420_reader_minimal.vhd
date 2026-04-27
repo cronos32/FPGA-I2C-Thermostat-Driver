@@ -28,7 +28,8 @@ entity adt7420_reader_minimal is
     generic (
         CLOCK_FREQ_HZ    : integer := 100_000_000;  -- main clock
         SCL_FREQ_HZ      : integer := 100_000;      -- target SCL frequency
-        READ_INTERVAL_MS : integer := 1000          -- between reads
+        READ_INTERVAL_MS : integer := 1000;         -- between reads
+        POR_MS           : integer := 250           -- power-on wait; 0 = skip (sim)
     );
     port (
         clock          : in    STD_LOGIC;
@@ -57,7 +58,7 @@ architecture behavioral of adt7420_reader_minimal is
 
     -- Power-on delay: ADT7420 needs ~1 ms POR + ~240 ms for first
     -- conversion in 13-bit mode. 250 ms covers both.
-    constant POR_TICKS       : integer := (CLOCK_FREQ_HZ / 1000) * 250;
+    constant POR_TICKS       : integer := (CLOCK_FREQ_HZ / 1000) * POR_MS;
 
     constant INTERVAL_TICKS  : integer := (CLOCK_FREQ_HZ / 1000) * READ_INTERVAL_MS;
 
@@ -150,7 +151,7 @@ begin
                     scl_drive     <= '1';
                     sda_drive     <= '1';
                     sda_is_master <= '1';
-                    if por_count = to_unsigned(POR_TICKS - 1, por_count'length) then
+                    if POR_MS = 0 or por_count = to_unsigned(POR_TICKS - 1, por_count'length) then
                         state          <= S_IDLE;
                         interval_count <= (others => '0');
                     else

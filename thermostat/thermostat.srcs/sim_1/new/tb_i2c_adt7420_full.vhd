@@ -69,17 +69,19 @@ begin
     sda <= 'H';
     sda <= slave_sda_drv;
 
-    dut : entity work.adt7420_reader_digikey
+    dut : entity work.adt7420_reader_minimal
         generic map (
-            CLOCK_FREQ_HZ => SIM_CLOCK_FREQ,
-            SENSOR_ADDR   => SENSOR_ADDR
+            CLOCK_FREQ_HZ    => 100_000_000,
+            SCL_FREQ_HZ      => 100_000,
+            READ_INTERVAL_MS => 2,          -- 2 ms between reads keeps sim short
+            POR_MS           => 0  
         )
         port map (
             clock       => clk,
             reset       => rst,
+            sensor_address => SENSOR_ADDR,
             temperature => temperature,
             temp_valid  => temp_valid,
-            ack_error   => ack_err,
             scl         => scl,
             sda         => sda
         );

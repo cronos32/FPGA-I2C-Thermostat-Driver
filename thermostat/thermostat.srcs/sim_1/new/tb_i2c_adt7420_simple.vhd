@@ -52,10 +52,12 @@ begin
     sda <= 'H';
     sda <= slave_sda_drv;
 
-    dut : entity work.adt7420_reader_simple
+    dut : entity work.adt7420_reader_minimal
         generic map (
             CLOCK_FREQ_HZ    => 100_000_000,
-            READ_INTERVAL_MS => 2           -- 2 ms between reads keeps sim short
+            SCL_FREQ_HZ      => 100_000,
+            READ_INTERVAL_MS => 2,          -- 2 ms between reads keeps sim short
+            POR_MS           => 250           -- skip 250 ms POR in simulation
         )
         port map (
             clock          => clk,
@@ -63,7 +65,7 @@ begin
             sensor_address => SENSOR_ADDR,
             temperature    => temperature,
             temp_valid     => temp_valid,
-            error          => err_out,
+            --error          => err_out,
             scl            => scl,
             sda            => sda
         );
@@ -122,7 +124,6 @@ begin
              & " scl="       & std_logic'image(scl)
              & " sda="       & std_logic'image(sda)
              & " temp_valid=" & std_logic'image(temp_valid)
-             & " err="       & std_logic'image(err_out)
             severity failure;
         wait;
     end process;
