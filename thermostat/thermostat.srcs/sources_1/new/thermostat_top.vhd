@@ -27,8 +27,8 @@ entity thermostat_top is
         led  : out STD_LOGIC_VECTOR (1 downto 0);
         TMP_SDA : inout STD_LOGIC;
         TMP_SCL : inout STD_LOGIC;
-        j_sda : inout STD_LOGIC;
-        j_scl : inout STD_LOGIC;
+        j_sda : out STD_LOGIC;
+        j_scl : out STD_LOGIC;
         heat_en : out STD_LOGIC;
         cool_en : out STD_LOGIC
     );
