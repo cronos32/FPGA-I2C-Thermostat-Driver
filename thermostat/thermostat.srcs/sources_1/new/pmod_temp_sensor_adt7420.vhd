@@ -64,7 +64,7 @@ ARCHITECTURE behavior OF pmod_temp_sensor_adt7420 IS
      data_wr   : IN     STD_LOGIC_VECTOR(7 DOWNTO 0); --data to write to slave
      busy      : OUT    STD_LOGIC;                    --indicates transaction in progress
      data_rd   : OUT    STD_LOGIC_VECTOR(7 DOWNTO 0); --data read from slave
-     ack_error : BUFFER STD_LOGIC;                    --flag if improper acknowledge from slave
+     ack_error : OUT    STD_LOGIC;                    --flag if improper acknowledge from slave
      sda       : INOUT  STD_LOGIC;                    --serial data output of i2c bus
      scl       : INOUT  STD_LOGIC);                   --serial clock output of i2c bus
   END COMPONENT;

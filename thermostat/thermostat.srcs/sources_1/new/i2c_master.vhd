@@ -49,7 +49,7 @@ ENTITY i2c_master IS
     data_wr   : IN     STD_LOGIC_VECTOR(7 DOWNTO 0); --data to write to slave
     busy      : OUT    STD_LOGIC;                    --indicates transaction in progress
     data_rd   : OUT    STD_LOGIC_VECTOR(7 DOWNTO 0); --data read from slave
-    ack_error : BUFFER STD_LOGIC;                    --flag if improper acknowledge from slave
+    ack_error : OUT    STD_LOGIC;                    --flag if improper acknowledge from slave
     sda       : INOUT  STD_LOGIC;                    --serial data output of i2c bus
     scl       : INOUT  STD_LOGIC);                   --serial clock output of i2c bus
 END i2c_master;
@@ -69,7 +69,10 @@ ARCHITECTURE logic OF i2c_master IS
   SIGNAL data_rx       : STD_LOGIC_VECTOR(7 DOWNTO 0);   --data received from slave
   SIGNAL bit_cnt       : INTEGER RANGE 0 TO 7 := 7;      --tracks bit number in transaction
   SIGNAL stretch       : STD_LOGIC := '0';               --identifies if slave is stretching scl
+  SIGNAL ack_error_int : STD_LOGIC := '0';               --internal ack_error for readback
 BEGIN
+
+  ack_error <= ack_error_int;
 
   --generate the timing for the bus clock (scl_clk) and the data clock (data_clk)
   PROCESS(clk, reset_n)
@@ -85,25 +88,24 @@ BEGIN
       ELSIF(stretch = '0') THEN           --clock stretching from slave not detected
         count := count + 1;               --continue clock generation timing
       END IF;
-      CASE count IS
-        WHEN 0 TO divider-1 =>            --first 1/4 cycle of clocking
-          scl_clk <= '0';
-          data_clk <= '0';
-        WHEN divider TO divider*2-1 =>    --second 1/4 cycle of clocking
-          scl_clk <= '0';
-          data_clk <= '1';
-        WHEN divider*2 TO divider*3-1 =>  --third 1/4 cycle of clocking
-          scl_clk <= '1';                 --release scl
-          IF(scl = '0') THEN              --detect if slave is stretching clock
-            stretch <= '1';
-          ELSE
-            stretch <= '0';
-          END IF;
-          data_clk <= '1';
-        WHEN OTHERS =>                    --last 1/4 cycle of clocking
-          scl_clk <= '1';
-          data_clk <= '0';
-      END CASE;
+      IF(count < divider) THEN              --first 1/4 cycle of clocking
+        scl_clk <= '0';
+        data_clk <= '0';
+      ELSIF(count < divider*2) THEN         --second 1/4 cycle of clocking
+        scl_clk <= '0';
+        data_clk <= '1';
+      ELSIF(count < divider*3) THEN         --third 1/4 cycle of clocking
+        scl_clk <= '1';                     --release scl
+        IF(scl = '0') THEN                  --detect if slave is stretching clock
+          stretch <= '1';
+        ELSE
+          stretch <= '0';
+        END IF;
+        data_clk <= '1';
+      ELSE                                  --last 1/4 cycle of clocking
+        scl_clk <= '1';
+        data_clk <= '0';
+      END IF;
     END IF;
   END PROCESS;
 
@@ -115,7 +117,7 @@ BEGIN
       busy <= '1';                         --indicate not available
       scl_ena <= '0';                      --sets scl high impedance
       sda_int <= '1';                      --sets sda high impedance
-      ack_error <= '0';                    --clear acknowledge error flag
+      ack_error_int <= '0';                --clear acknowledge error flag
       bit_cnt <= 7;                        --restarts data bit counter
       data_rd <= "00000000";               --clear data read port
     ELSIF(clk'EVENT AND clk = '1') THEN
@@ -216,17 +218,17 @@ BEGIN
           WHEN start =>
             IF(scl_ena = '0') THEN                  --starting new transaction
               scl_ena <= '1';                       --enable scl output
-              ack_error <= '0';                     --reset acknowledge error output
+              ack_error_int <= '0';                 --reset acknowledge error output
             END IF;
-          WHEN slv_ack1 =>                          --receiving slave acknowledge (command)
-            IF(sda /= '0' OR ack_error = '1') THEN  --no-acknowledge or previous no-acknowledge
-              ack_error <= '1';                     --set error output if no-acknowledge
+          WHEN slv_ack1 =>                              --receiving slave acknowledge (command)
+            IF(sda /= '0' OR ack_error_int = '1') THEN  --no-acknowledge or previous no-acknowledge
+              ack_error_int <= '1';                     --set error output if no-acknowledge
             END IF;
           WHEN rd =>                                --receiving slave data
             data_rx(bit_cnt) <= sda;                --receive current slave data bit
-          WHEN slv_ack2 =>                          --receiving slave acknowledge (write)
-            IF(sda /= '0' OR ack_error = '1') THEN  --no-acknowledge or previous no-acknowledge
-              ack_error <= '1';                     --set error output if no-acknowledge
+          WHEN slv_ack2 =>                              --receiving slave acknowledge (write)
+            IF(sda /= '0' OR ack_error_int = '1') THEN  --no-acknowledge or previous no-acknowledge
+              ack_error_int <= '1';                     --set error output if no-acknowledge
             END IF;
           WHEN stop =>
             scl_ena <= '0';                         --disable scl
