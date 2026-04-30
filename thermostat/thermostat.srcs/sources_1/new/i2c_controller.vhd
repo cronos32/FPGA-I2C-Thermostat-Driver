@@ -1,9 +1,15 @@
 -- i2c_controller: Basic I2C master FSM.
 -- Adapted from https://github.com/aslak3/i2c-controller
--- An internal 7-bit counter divides the 100 MHz clock to ~100 kHz SCL.
+-- An internal 10-bit counter divides the 100 MHz clock to ~98 kHz SCL.
 -- The FSM sequences through START, address+R/W, data bytes, ACK/NAK, STOP.
 -- Open-drain operation: scl/sda are inout; driving 'Z' releases the line to
 -- the pull-up resistor, driving '0' pulls it low (via scl_local / sda_local).
+--
+-- Each ACK has a _LOW companion state (WRITING_ACK_LOW / READING_ACK_LOW)
+-- that drops SCL low after the 9th clock, parking the bus at SCL=0, SDA=Z
+-- before any pause / STOP / RESTART. This prevents the slave from holding
+-- SDA low across a long pause (which could look like a STOP to a decoder)
+-- and gives a clean SCL falling edge for the slave to release SDA.
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -28,8 +34,8 @@ end entity;
 
 architecture behavioral of i2c_controller is
     type T_STATE is (START1, START2,
-        WRITING_DATA, WRITING_ACK, WRITE_WAITING,
-        READING_DATA, READING_ACK, READ_WAITING,
+        WRITING_DATA, WRITING_ACK, WRITING_ACK_LOW, WRITE_WAITING,
+        READING_DATA, READING_ACK, READING_ACK_LOW, READ_WAITING,
         STOP1, STOP2, STOP3,
         RESTART1
     );
@@ -43,7 +49,9 @@ architecture behavioral of i2c_controller is
 
 begin
     process (reset, clock)
-    variable i2c_clock_counter : UNSIGNED (7 downto 0);    -- Slows down the SCL from main clock
+    -- 10-bit counter: bit 9 flips every 512 main clocks -> SCL period
+    -- = 1024 cycles -> ~97.7 kHz at 100 MHz main clock (standard-mode I2C).
+    variable i2c_clock_counter : UNSIGNED (9 downto 0);    -- Slows down the SCL from main clock
     begin
         if (reset = '1') then
             i2c_clock_counter      := (others => '0');
@@ -60,7 +68,7 @@ begin
                 -- If we are running, inc the counter and extract the MSB for 2nd process
                 i2c_clock_counter := i2c_clock_counter + 1;
                 previous_running_clock <= running_clock;
-                running_clock <= i2c_clock_counter (7);
+                running_clock <= i2c_clock_counter (9);
             end if;
             if (pause_running = '1') then
                 -- Handle the 2nd process wanting to wait for a trigger (eg. the next byte to write)
@@ -125,33 +133,48 @@ begin
                         clock_flip := not clock_flip;
 
                     when WRITING_ACK =>
+                        -- 9th clock for the slave's ACK. Master releases SDA
+                        -- (sda_local='1'); slave pulls it low to ACK.
                         scl_local <= clock_flip;
-                        -- Tri-state the SDA as an input
                         sda_local <= '1';
                         if (clock_flip = '1') then
-                            -- Latch the SDA input
+                            -- SCL high: sample the ACK bit. We move to
+                            -- WRITING_ACK_LOW next so SCL gets a clean falling
+                            -- edge before we pause or transition -- slaves
+                            -- release SDA on SCL low, and parking the bus at
+                            -- SCL=0 avoids a false-STOP during long pauses.
                             ack_error <= sda;
-                        else -- fix 
-                            if (last_byte = '1') then
-                                -- Last byte to write? Generate a STOP sequence
-                                state <= STOP1;
-                            else
-                                -- Otherwise wait for the next trigger. We might be reading or writing now, as
-                                -- this byte sent might have been the slave address
-                                pause_running <= '1';
-                                if (read_write = '0') then
-                                    state <= WRITE_WAITING;
-                                else
-                                    state <= READ_WAITING;
-                                end if;
-                            end if;
+                            state <= WRITING_ACK_LOW;
                         end if;
                         clock_flip := not clock_flip;
 
+                    when WRITING_ACK_LOW =>
+                        -- Force SCL low so slave releases ACK, then decide
+                        -- where to go next. Bus is parked at SCL=0, SDA=Z.
+                        scl_local <= '0';
+                        sda_local <= '1';
+                        if (last_byte = '1') then
+                            -- Last byte to write? Generate a STOP sequence.
+                            state <= STOP1;
+                        else
+                            -- Otherwise wait for the next trigger. We might
+                            -- be reading or writing now, as this byte sent
+                            -- might have been the slave address.
+                            pause_running <= '1';
+                            if (read_write = '0') then
+                                state <= WRITE_WAITING;
+                            else
+                                state <= READ_WAITING;
+                            end if;
+                        end if;
+
                     when WRITE_WAITING =>
-                        -- Get ready for the next byte to write
+                        -- Get ready for the next byte to write. Force
+                        -- clock_flip='0' so WRITING_DATA's first cycle drives
+                        -- SCL low and latches SDA's first bit cleanly.
                         data_to_write := write_data;
                         bit_counter := 8;
+                        clock_flip := '0';
                         state <= WRITING_DATA;
 
                     when READING_DATA =>
@@ -171,24 +194,35 @@ begin
                         clock_flip := not clock_flip;
 
                     when READING_ACK =>
+                        -- 9th clock: master drives ACK (0) or NAK (1) on SDA.
                         scl_local <= clock_flip;
-                        -- ACK or NAK based on wether this is the last byte
                         sda_local <= last_byte;
                         if (clock_flip = '1') then
-                            -- Clock going down? If this is the last byte we need to STOP,
-                            -- otherwise wait on trigger for the next byte to read
-                            if (last_byte = '1') then
-                                state <= STOP1;
-                            else
-                                pause_running <= '1';
-                                state <= READ_WAITING;
-                            end if;
+                            -- SCL high: slave has sampled our ACK/NAK.
+                            -- Move to READING_ACK_LOW so SCL drops low and
+                            -- the bus parks at SCL=0 before pausing/STOP.
+                            state <= READING_ACK_LOW;
                         end if;
                         clock_flip := not clock_flip;
 
+                    when READING_ACK_LOW =>
+                        -- Force SCL low and release SDA so either slave can
+                        -- drive next data bit (on trigger) or STOP1 can pull
+                        -- SDA low cleanly while SCL is low.
+                        scl_local <= '0';
+                        sda_local <= '1';
+                        if (last_byte = '1') then
+                            state <= STOP1;
+                        else
+                            pause_running <= '1';
+                            state <= READ_WAITING;
+                        end if;
+
                     when READ_WAITING =>
-                        -- Prepare the bit counter
+                        -- Prepare the bit counter. Force clock_flip='0' so
+                        -- READING_DATA's first cycle drives SCL low cleanly.
                         bit_counter := 8;
+                        clock_flip := '0';
                         state <= READING_DATA;
 
                     when STOP1 =>

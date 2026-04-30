@@ -84,23 +84,21 @@ architecture Behavioral of thermostat_top is
         );
     end component ui_fsm;
 
-    component adt7420_reader is
+    component adt7420_reader_digikey is
         generic (
-        CLOCK_FREQ_HZ    : integer;
-        READ_INTERVAL_MS : integer
+            CLOCK_FREQ_HZ : integer;
+            SENSOR_ADDR   : STD_LOGIC_VECTOR(6 downto 0)
         );
         port (
-            clock            : in    STD_LOGIC;                       -- Master clock
-            reset            : in    STD_LOGIC;                       -- Active-high reset
-            sensor_address   : in    STD_LOGIC_VECTOR (6 downto 0);   -- Typ. "1001000" (0x48)
-            resolution_16bit : in    STD_LOGIC;                       -- 0=13-bit, 1=16-bit
-            temperature      : out   STD_LOGIC_VECTOR (15 downto 0);  -- Signed tenths of C
-            temp_valid       : out   STD_LOGIC;                       -- 1-cycle pulse per reading
-            error            : out   STD_LOGIC;                       -- Sticky: any byte NAKed
-            scl              : inout STD_LOGIC;
-            sda              : inout STD_LOGIC
+            clock       : in    STD_LOGIC;
+            reset       : in    STD_LOGIC;                       -- active-high
+            temperature : out   STD_LOGIC_VECTOR (15 downto 0);  -- signed tenths of C
+            temp_valid  : out   STD_LOGIC;                       -- 1-cycle pulse per reading
+            ack_error   : out   STD_LOGIC;
+            scl         : inout STD_LOGIC;
+            sda         : inout STD_LOGIC
         );
-    end component adt7420_reader;
+    end component adt7420_reader_digikey;
     
     signal sig_display_data : std_logic_vector (31 downto 0); --xxxCxxxC
     signal sig_dp    : std_logic_vector(7 downto 0):= "10111011";  -- decimal points "10111011"
@@ -115,9 +113,6 @@ architecture Behavioral of thermostat_top is
     signal sig_temp_vector : std_logic_vector(15 downto 0);
     signal sig_temp_valid  : std_logic;
     
-    signal sig_sda : std_logic;
-    signal sig_scl : std_logic;
-
 begin
     
     sig_set_temp <= unsigned(sig_set_temp_slv);
@@ -156,21 +151,19 @@ begin
     ------------------------------------------------------------------
     -- ADT7420 Temperature Sensor Reader Instantiation
     ------------------------------------------------------------------
-    sensor_reader : adt7420_reader
-        generic map ( 
-            CLOCK_FREQ_HZ    => 100_000_000,
-            READ_INTERVAL_MS => 1000 -- Read once per second
+    sensor_reader : adt7420_reader_digikey
+        generic map (
+            CLOCK_FREQ_HZ => 100_000_000,
+            SENSOR_ADDR   => "1001011"            -- Nexys A7: A1=1, A0=1 -> 0x4B
         )
         port map (
-            clock            => clk,              -- Corrected port name
-            reset            => btnc,             -- Corrected port name
-            sensor_address   => "1001011",        -- Nexys A7: A1=1, A0=1 -> 0x4B
-            resolution_16bit => '1',              -- Use 16-bit for better accuracy
-            temperature      => sig_temp_vector,  -- Connect to intermediate vector
-            temp_valid       => sig_temp_valid,
-            error            => led(0),             -- Leave open or connect to an LED
-            scl              => sig_scl,
-            sda              => sig_sda
+            clock       => clk,
+            reset       => btnc,
+            temperature => sig_temp_vector,
+            temp_valid  => sig_temp_valid,
+            ack_error   => led(0),                -- ack_error from Larson's i2c_master
+            scl         => TMP_SCL,
+            sda         => TMP_SDA
         );
 
     display_0 : display_driver
@@ -204,9 +197,11 @@ begin
         cool_en =>  cool_en
     );
     
-    TMP_SDA <= sig_sda;
-    TMP_SCL <= sig_scl;
-    j_sda <= sig_sda;
-    j_scl <= sig_scl;
+    -- Debug header mirrors the real bus state using open-drain (tri-state)
+    -- semantics. Reading TMP_SDA/TMP_SCL at the top-level returns the actual
+    -- pin voltage (IOBUF input), so the logic analyzer on j_sda/j_scl sees
+    -- exactly what the sensor sees, including slave-driven ACK/data bits.
+    j_sda <= '0' when TMP_SDA = '0' else 'Z';
+    j_scl <= '0' when TMP_SCL = '0' else 'Z';
 
 end Behavioral;
