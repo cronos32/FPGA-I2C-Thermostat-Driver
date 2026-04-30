@@ -1,10 +1,9 @@
 -- display_driver: Time-multiplexed 8-digit 7-segment display driver.
--- Uses clk_en (G_MAX = 800_000, 125 Hz tick) and a 3-bit counter to cycle
+-- Uses clk_en (G_MAX = 200_000, 500 Hz tick) and a 3-bit counter to cycle
 -- through all eight display positions. A case statement selects the active
 -- 4-bit nibble from the 32-bit data word and passes it to bin2seg for
 -- segment decoding. Decimal-point output is indexed from the dp_en mask.
 -- Anode outputs are active-low (one '0' active per digit at a time).
-
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;

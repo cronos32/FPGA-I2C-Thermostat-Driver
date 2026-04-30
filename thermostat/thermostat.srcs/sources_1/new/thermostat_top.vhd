@@ -1,6 +1,6 @@
 -- thermostat_top: Top-level entity for the FPGA I2C thermostatic driver.
 -- Instantiates the ADT7420 I2C sensor reader, a button-driven UI FSM for
--- setpoint control (22.0 deg C default, 0.5 deg C steps, range 5.5-40.0 deg C),
+-- setpoint control (22.0 deg C default, 0.5 deg C steps, range 5.0-40.0 deg C),
 -- a 7-segment display combiner showing set and measured temperature, and a
 -- temperature regulator driving heat_en / cool_en outputs and an RGB LED.
 -- Reset is active-high (btnc); temperature is represented in tenths of a degree.

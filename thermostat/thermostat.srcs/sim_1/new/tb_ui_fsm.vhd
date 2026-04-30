@@ -1,6 +1,6 @@
 -- tb_ui_fsm: Testbench for ui_fsm.
 -- Simulates btn_up / btn_down presses and verifies that temp_out increments
--- and decrements in 5-unit steps, clamped to the 55-400 (5.5-40.0 deg C) range.
+-- and decrements in 5-unit steps, clamped to the 50-400 (5.0-40.0 deg C) range.
 
 library ieee;
 use ieee.std_logic_1164.all;
