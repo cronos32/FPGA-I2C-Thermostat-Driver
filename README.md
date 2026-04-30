@@ -48,6 +48,8 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 | `led16_r` |   out     | `std_logic`                    | Heating indicator (red LED)                        |
 | `led16_b` |   out     | `std_logic`                    | Cooling indicator (blue LED)                       |
 | `led16_g` |   out     | `std_logic`                    | System ready / in-range indicator (green LED)      |
+| `heat_en` |   out     | `std_logic`                    | Heating output (JA1)                               |
+| `cool_en` |   out     | `std_logic`                    | Cooling output (JA2)                               |
 | `seg`     |   out     | `std_logic_vector(6 downto 0)` | 7-segment display cathodes (CA–CG, active-low)     |
 | `dp`      |   out     | `std_logic`                    | Decimal point (active-low)                         |
 | `an`      |   out     | `std_logic_vector(7 downto 0)` | 7-segment display anodes (AN7–AN0, active-low)     |
