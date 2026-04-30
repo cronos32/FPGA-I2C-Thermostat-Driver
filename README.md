@@ -28,6 +28,7 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
     - Adjust temperature setpoint using buttons.
 4. **Control logic**:
     - Activate heating or cooling outputs according to temperature and setpoint.
+    - Control relays via the outputs.
     - Indicate status with LEDs.
 5. **Modular VHDL design**:
     - Debounced buttons.
@@ -294,6 +295,8 @@ Purely combinational BCD converter. Takes two 12-bit unsigned values (`set_temp`
 
 Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (500 Hz tick, G_MAX = 200 000) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
 
+![Diagram of display driver](img/display_driver_schema.png)
+
 #### [tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
 
 ![tb_display_driver-img](img/tb_img/tb_display_driver.png)
@@ -344,16 +347,14 @@ Generic N-bit synchronous up-counter with synchronous reset and clock-enable inp
 
 Post-synthesis results for target device **xc7a50ticsg324-1L** (Nexys A7-50T):
 
-| Resource         | Used  | Available | Utilization |
-|:-----------------|------:|----------:|------------:|
-| Slice LUTs       | 1 736 |    32 600 |       5.33% |
-| Slice Registers  |   247 |    65 200 |       0.38% |
-| F7 Muxes         |    17 |    16 300 |       0.10% |
-| F8 Muxes         |     6 |     8 150 |       0.07% |
-| Block RAM        |     0 |        75 |       0.00% |
-| DSP48E1          |     0 |       120 |       0.00% |
+| Resource | Utilization  | Available | Utilization % |
+|:---------|-------------:|----------:|--------------:|
+| LUT      |        1 702 |    32 600 |          5.22 |
+| FF       |          270 |    65 200 |          0.41 |
+| IO       |           27 |       210 |         12.86 |
+| BUFG     |            1 |        32 |          3.13 |
 
-Post-implementation LUT count: **1 696** (5.20%).
+Post-implementation LUT count: **1 662** (5.10 %).
 
 ## Demo video
 
