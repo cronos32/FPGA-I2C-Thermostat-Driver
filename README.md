@@ -90,14 +90,16 @@ flowchart TD
 
     %% ── Sensor subsystem ─────────────────────────────────────────
     subgraph SENS_GRP ["adt7420_reader"]
-        I2C["i2c_controller\nI²C master FSM"]
+        PMOD["pmod_temp_sensor_adt7420\nADT7420 FSM"]
+        I2C["i2c_master\nI²C bus master"]
+        PMOD --> I2C
     end
 
     %% ── Display path ─────────────────────────────────────────────
     COMB["display_data_combiner\nBCD conversion · °C label"]
 
     subgraph DISP_GRP ["display_driver"]
-        CE_D["clk_en\n125 Hz"]
+        CE_D["clk_en\n500 Hz"]
         CNT["counter\n3-bit"]
         B2S["bin2seg\ndecoder"]
     end
@@ -136,7 +138,7 @@ flowchart TD
     classDef top    fill:#EEEDFE,stroke:#534AB7,color:#3C3489
 
     class CLK,BTNC,BTNU,BTND,I2C_BUS,SEG,LED,HEAT,COOL io
-    class COMB,REG,DISP_GRP,UI,SENS_GRP,I2C module
+    class COMB,REG,DISP_GRP,UI,SENS_GRP,PMOD,I2C module
     class TOP top
 ```
 
@@ -146,88 +148,68 @@ flowchart TD
 
 ## VHDL FSM diagrams
 
-### States of i2c_controller
+### States of i2c_master
 
-State names match the `T_STATE` type in [i2c_controller.vhd](thermostat/thermostat.srcs/sources_1/new/i2c_controller.vhd).
-The FSM advances once per rising edge of the internal `running_clock` (derived from the 100 MHz main clock).
+State names match the `machine` type in [i2c_master.vhd](thermostat/thermostat.srcs/sources_1/new/i2c_master.vhd).
+The FSM advances on `data_clk` edges derived from the internal clock divider (100 MHz → 400 kHz SCL).
 
 ```mermaid
 stateDiagram-v2
     direction LR
 
-    [*] --> START1
+    [*] --> ready
 
-    START1 --> START2
+    ready --> ready   : ena=0 (idle)
+    ready --> start   : ena=1\n(latch addr+rw, data_wr)
 
-    START2 --> WRITING_DATA : load addr+R/W,\nbit_counter=8
+    start --> command : drive SDA=addr_rw(7)\nenable SCL
 
-    WRITING_DATA --> WRITING_DATA : bit_counter > 0\n(toggle SCL)
-    WRITING_DATA --> WRITING_ACK  : bit_counter = 0
+    command --> command  : bit_cnt > 0\n(shift address bits)
+    command --> slv_ack1 : bit_cnt = 0\n(release SDA)
 
-    WRITING_ACK --> STOP1         : last_byte=1 & SCL↑\n(sample ACK)
-    WRITING_ACK --> WRITE_WAITING : last_byte=0 & R/W=0 & SCL↑
-    WRITING_ACK --> READ_WAITING  : last_byte=0 & R/W=1 & SCL↑
+    slv_ack1 --> wr : rw=0\n(drive data_tx(7))
+    slv_ack1 --> rd : rw=1\n(release SDA)
 
-    WRITE_WAITING --> WRITING_DATA : next trigger\n(load write_data)
-    READ_WAITING  --> READING_DATA : next trigger\n(bit_counter=8)
+    wr --> wr       : bit_cnt > 0\n(shift data bits)
+    wr --> slv_ack2 : bit_cnt = 0\n(release SDA)
 
-    READING_DATA --> READING_DATA : bit_counter > 0\n(toggle SCL, sample SDA)
-    READING_DATA --> READING_ACK  : bit_counter = 0
+    rd --> rd       : bit_cnt > 0\n(sample SDA)
+    rd --> mstr_ack : bit_cnt = 0\n(output data_rd)
 
-    READING_ACK --> STOP1        : last_byte=1 & SCL↑\n(send NAK)
-    READING_ACK --> READ_WAITING : last_byte=0 & SCL↑\n(send ACK)
+    slv_ack2 --> wr    : ena=1, same addr+rw\n(continue write)
+    slv_ack2 --> start : ena=1, new addr/rw\n(repeated START)
+    slv_ack2 --> stop  : ena=0
 
-    STOP1 --> STOP2
-    STOP2 --> STOP3
-    STOP3 --> START1 : pause_running=1\n(wait for next trigger)
+    mstr_ack --> rd    : ena=1, same addr+rw\n(continue read)
+    mstr_ack --> start : ena=1, new addr/rw\n(repeated START)
+    mstr_ack --> stop  : ena=0
 
-    RESTART1 --> START1 : entered immediately\nwhen restart=1
-
-    note right of RESTART1
-        restart=1 is checked
-        every clock cycle,
-        overrides current state
-    end note
+    stop --> ready : busy=0\nSCL disable
 ```
 
-### States of adt7420_reader
+### States of pmod_temp_sensor_adt7420
 
-State names match the `T_STATE` type in [adt7420_reader.vhd](thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd).
-Each `_SETUP` state fires a trigger to `i2c_controller`; each `_WAIT` state waits for the `busy` falling edge.
+State names match the `machine` type in [pmod_temp_sensor_adt7420.vhd](thermostat/thermostat.srcs/sources_1/new/pmod_temp_sensor_adt7420.vhd).
+The FSM drives `i2c_master` via `ena`, `addr`, `rw`, and `data_wr`; it tracks I²C progress by counting `busy` low-to-high transitions.
 
 ```mermaid
 stateDiagram-v2
 
-    [*] --> S_RESET
-    S_RESET --> S_CFG_ADDR : latch resolution bit
+    [*] --> start
 
-    state "Configuration write (one-time at startup)" as CFG {
-        S_CFG_ADDR      --> S_CFG_ADDR_WAIT  : trigger↑ (addr+W)
-        S_CFG_ADDR_WAIT --> S_CFG_PTR        : busy↓
-        S_CFG_PTR       --> S_CFG_PTR_WAIT   : trigger↑ (ptr=0x03)
-        S_CFG_PTR_WAIT  --> S_CFG_VAL        : busy↓
-        S_CFG_VAL       --> S_CFG_VAL_WAIT   : trigger↑ (config byte, last_byte=1)
-    }
+    start --> start          : counter < sys_clk_freq/10\n(100 ms power-up wait)
+    start --> set_resolution : 100 ms elapsed
 
-    S_CFG_VAL_WAIT --> S_IDLE : busy↓
+    set_resolution --> set_resolution : busy_cnt < 2\n(write 0x80 to config reg 0x03)
+    set_resolution --> pause          : i2c_busy=0, busy_cnt=2\n(config write complete)
 
-    S_IDLE --> S_IDLE      : interval_tick=0
-    S_IDLE --> S_RD_ADDR_W : interval_tick=1 (every READ_INTERVAL_MS)
+    pause --> pause     : counter < 1.3 µs
+    pause --> read_data : 1.3 µs elapsed
 
-    state "Temperature read (every READ_INTERVAL_MS)" as RD {
-        S_RD_ADDR_W      --> S_RD_ADDR_W_WAIT   : trigger↑ (addr+W)
-        S_RD_ADDR_W_WAIT --> S_RD_PTR            : busy↓
-        S_RD_PTR         --> S_RD_PTR_WAIT       : trigger↑ (ptr=0x00)
-        S_RD_PTR_WAIT    --> S_RD_RESTART        : busy↓
-        S_RD_RESTART     --> S_RD_RESTART_WAIT   : trigger↑ + restart (addr+R)
-        S_RD_RESTART_WAIT --> S_RD_MSB           : busy↓
-        S_RD_MSB         --> S_RD_MSB_WAIT       : trigger↑ (read MSB, ACK)
-        S_RD_MSB_WAIT    --> S_RD_LSB            : busy↓ · latch raw_msb
-        S_RD_LSB         --> S_RD_LSB_WAIT       : trigger↑ (read LSB, NAK+STOP)
-        S_RD_LSB_WAIT    --> S_RD_DONE           : busy↓ · latch raw_lsb
-    }
+    read_data --> read_data     : busy_cnt < 3\n(addr+W · ptr=0x00 · addr+R · read MSB+LSB)
+    read_data --> output_result : i2c_busy=0, busy_cnt=3\n(latch temp_data)
 
-    S_RD_DONE --> S_IDLE : pulse temp_valid convert raw→tenths °C
+    output_result --> pause : drive temperature output\n(continuous loop)
 ```
 
 ## Module descriptions and simulations
@@ -239,21 +221,28 @@ Top-level entity that wires all subsystems together. Instantiates the sensor rea
 #### [tb_thermostat_top](thermostat/thermostat.srcs/sim_1/new/tb_thermostat_top.vhd)
 
 ![tb_thermostat_top-img](img/tb_img/tb_thermostat_top.png)
+
 ---
 
-### [`i2c_controller`](thermostat/thermostat.srcs/sources_1/new/i2c_controller.vhd)
+### [`i2c_master`](thermostat/thermostat.srcs/sources_1/new/i2c_master.vhd)
 
-Basic I²C master FSM. An internal 7-bit counter divides the 100 MHz clock down to generate a bit clock (`running_clock`). The FSM advances on each rising edge of `running_clock` and sequences through START, address+R/W, data bytes, ACK/NAK, and STOP states. Open-drain operation is implemented via `inout` ports (`scl`, `sda`) driven with tri-state logic using internal signals `scl_local` and `sda_local` — `'1'` releases the line to `'Z'` (pull-up), `'0'` pulls the line low. Adapted from [aslak3/i2c-controller](https://github.com/aslak3/i2c-controller).
+Digi-Key / Scott Larson byte-level I²C master FSM. An internal clock divider generates `scl_clk` and `data_clk` from the system clock; the FSM advances on `data_clk` edges. Sequences through states `ready → start → command → slv_ack1 → [wr | rd] → [slv_ack2 | mstr_ack] → stop`. Supports continuous multi-byte transactions: when `ena` remains asserted after a byte completes, the master issues a repeated START or continues without a STOP condition. Open-drain operation via tri-state: `scl` and `sda` are driven `'0'` to pull low or released to `'Z'` for the pull-up to assert high. Operates at 400 kHz bus clock (configurable via generic). Imported unmodified from the Digi-Key EEWIKI.
 
 #### [`tb_i2c_controller`](thermostat/thermostat.srcs/sim_1/new/tb_i2c_controller.vhd)
 
-
 ![tb_i2c_controller-img](img/tb_img/tb_i2c_controller.png)
+
+---
+
+### [`pmod_temp_sensor_adt7420`](thermostat/thermostat.srcs/sources_1/new/pmod_temp_sensor_adt7420.vhd)
+
+Digi-Key / Scott Larson ADT7420 controller. Wraps `i2c_master` and orchestrates the full ADT7420 startup and continuous read sequence. On reset release, waits 100 ms for the sensor to power up, then writes `0x80` to the configuration register (address `0x03`) to select 16-bit continuous-conversion mode. After a 1.3 µs inter-transaction pause, it enters a continuous loop: issues a write+repeated-START+read sequence (`addr+W → ptr=0x00 → addr+R → read MSB → read LSB`) to fetch the 16-bit temperature register. The raw 16-bit ADC value (LSB = 1/128 °C in 16-bit mode) is placed on the `temperature` output after each completed read. Imported unmodified from the Digi-Key EEWIKI.
+
 ---
 
 ### [`adt7420_reader`](thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd)
 
-Wrapper around `i2c_controller` that performs periodic temperature reads from the ADT7420 sensor. At startup it writes the configuration register (resolution selection). Then, every `READ_INTERVAL_MS` milliseconds, it executes a 5-trigger read sequence: address+W → pointer byte → RESTART+address+R → read MSB → read LSB. A separate combinational process converts the raw 16-bit two's-complement ADC value to tenths of °C (signed). Temperature is output as a 16-bit signed vector; `temp_valid` pulses high for one clock cycle per completed reading.
+Thin wrapper around `pmod_temp_sensor_adt7420` that adapts it to the thermostat's interface. Inverts the active-high `reset` to `reset_n` for the Larson driver. A registered process monitors the 16-bit `temperature` output of `pmod_temp_sensor_adt7420` and generates a one-cycle `temp_valid` pulse whenever the value changes, signalling a new reading. Simultaneously converts the raw two's-complement value to signed tenths of °C using the identity `tenths = raw × 10 / 128 = (raw << 3 + raw << 1) >> 7`, avoiding a signed multiplier. The 16-bit signed result is forwarded to `thermostat_top` for clamping and display.
 
 #### [tb_adt7420](thermostat/thermostat.srcs/sim_1/new/tb_adt7420.vhd)
 
@@ -301,8 +290,8 @@ Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (500 Hz tick, G
 
 ![tb_display_driver-img](img/tb_img/tb_display_driver.png)
 
-
 ### Resources from labs
+
 ---
 
 ### [`bin2seg`](thermostat/thermostat.srcs/sources_1/new/bi2seg.vhd)
@@ -360,10 +349,25 @@ Post-implementation LUT count: **1 662** (5.10 %).
 
 > *Link will be added after the Lab 5 demonstration.*
 
+## Tools used
+
+| Tool | Purpose |
+| :---- | :------- |
+| [Xilinx Vivado](https://www.xilinx.com/products/design-tools/vivado.html) | Synthesis, implementation, bitstream generation, and behavioral simulation |
+| [Visual Studio Code](https://code.visualstudio.com/) | VHDL editing and project file management |
+| [draw.io](https://app.diagrams.net/) | Schematic and block diagram authoring |
+| [Git](https://git-scm.com/) | Version control |
+| [GitHub](https://github.com/) | Remote repository, collaboration, and documentation hosting |
+| [Claude (Anthropic)](https://claude.ai/) | AI-assisted debugging and code review |
+| [Gemini (Google)](https://gemini.google.com/) | AI-assisted research and documentation |
+
 ## References
 
 1. Analog Devices, *ADT7420 ±0.25°C Accuracy 16-Bit Digital I²C Temperature Sensor*, datasheet Rev. C. [Online]. Available: <https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7420.pdf>
 2. Digilent, *Nexys A7 Reference Manual*. [Online]. Available: <https://digilent.com/reference/programmable-logic/nexys-a7/reference-manual>
-3. A. Slater, *i2c-controller — A simple I²C controller in VHDL*, GitHub. [Online]. Available: <https://github.com/aslak3/i2c-controller> *(used as the basis for `i2c_controller.vhd`)*
+3. A. Slater, *i2c-controller — A simple I²C controller in VHDL*, GitHub. [Online]. Available: <https://github.com/aslak3/i2c-controller> *(referenced for I²C controller design concepts)*
 4. T. Fryza, *Digital Electronics 1 — VHDL lab materials*, Brno University of Technology, 2026. [Online]. Available: <https://github.com/tomas-fryza/vhdl-examples>
 5. Digilent, *Nexys A7 Master XDC constraints file*, GitHub. [Online]. Available: <https://github.com/Digilent/digilent-xdc>
+6. Shilpa K C, Sharath G U, Shashidhar K R, Tulasi Prasad H, Revanasiddesh U, *Design and Implementation of I2C Protocol for Reading ADT7420 Sensor on
+Nexys A7 Board*, IJSREM. [Online]. Available: <https://www.ijsrem.com/download/design-and-implementation-of-i2c-protocol-for-reading-adt7420-sensor-on-nexys-a7-board>
+7. Digikey, *Temperature Sensor ADT7420 Pmod Controller (VHDL)*, Digikey forum. [Online]. Available: <https://forum.digikey.com/t/temperature-sensor-adt7420-pmod-controller-vhdl/20296>
