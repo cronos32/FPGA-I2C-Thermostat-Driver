@@ -23,7 +23,7 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 ## Project Objectives
 
 1. **Measure temperature** accurately using the ADT7420 sensor over I²C.
-2. **Display temperature** in °C on a 4-digit 7-segment display.
+2. **Display temperature** (set and measured) in °C on a 8-digit 7-segment display.
 3. **User interaction**:
     - Adjust temperature setpoint using buttons.
 4. **Control logic**:
@@ -32,7 +32,7 @@ This project implements a thermostatic driver using a **Nexys A7 Artix-7 50T** F
 5. **Modular VHDL design**:
     - Debounced buttons.
     - I²C master module.
-    - Temperature processing and unit conversion.
+    - Temperature processing and conversion.
     - Control logic for thermostat operation.
     - 7-segment display driver with multiplexing.
 6. **Reliable and synthesizable design** ready for FPGA implementation.
