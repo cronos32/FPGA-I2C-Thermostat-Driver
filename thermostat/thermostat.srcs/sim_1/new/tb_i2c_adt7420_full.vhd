@@ -1,6 +1,6 @@
 -- tb_i2c_adt7420_full.vhd
 --
--- Full ADT7420 I2C slave testbench targeting adt7420_reader_digikey (Build F).
+-- Full ADT7420 I2C slave testbench targeting adt7420_reader.
 --
 -- The Larson/Digi-Key driver issues two transaction types:
 --
@@ -18,7 +18,7 @@
 -- Generics
 --   SENSOR_ADDR      7-bit I2C address (default 0x4B for Nexys A7)
 --   TEMP_RAW_DEFAULT Initial 16-bit register value (16-bit mode: LSB = 1/128 C)
---   SIM_CLOCK_FREQ   Passed to CLOCK_FREQ_HZ of adt7420_reader_digikey.
+--   SIM_CLOCK_FREQ   Passed to CLOCK_FREQ_HZ of adt7420_reader.
 --                    Lowering this shrinks the Larson 100 ms startup counter
 --                    without changing the simulation clock (still 10 ns / cycle).
 --                    4_000_000 -> startup ~= 4 ms simulated, divider = 2.
@@ -69,7 +69,7 @@ begin
     sda <= 'H';
     sda <= slave_sda_drv;
 
-    dut : entity work.adt7420_reader_digikey
+    dut : entity work.adt7420_reader
         generic map (
             CLOCK_FREQ_HZ => SIM_CLOCK_FREQ,
             SENSOR_ADDR   => SENSOR_ADDR

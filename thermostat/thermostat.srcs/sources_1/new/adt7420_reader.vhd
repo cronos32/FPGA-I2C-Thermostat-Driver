@@ -1,8 +1,8 @@
--- ADT7420 reader -- Digi-Key / Scott Larson backend (Build F).
+-- adt7420_reader: ADT7420 I2C temperature sensor reader.
 --
--- Thin wrapper that:
---   * inverts btnc -> reset_n (Larson uses active-low reset)
---   * instantiates pmod_temp_sensor_adt7420 with sys_clk_freq=100MHz
+-- Thin wrapper around pmod_temp_sensor_adt7420 (Digi-Key / Scott Larson driver) that:
+--   * inverts reset -> reset_n (Larson driver uses active-low reset)
+--   * instantiates pmod_temp_sensor_adt7420 with configurable sys_clk_freq
 --   * converts the raw 16-bit register value (16-bit mode, LSB=0.0078125 C)
 --     into signed tenths-of-a-degree to match thermostat_top's expectation
 --   * generates a one-cycle temp_valid pulse on each new reading
@@ -11,14 +11,14 @@
 --   tenths = raw_signed * 10 / 128
 --          = (raw*8 + raw*2) >> 7    (avoids a signed multiplier)
 --
--- Larson's pmod_temp_sensor_adt7420 writes 0x80 to the config register at
--- startup, putting the ADT7420 into 16-bit continuous-conversion mode.
+-- pmod_temp_sensor_adt7420 writes 0x80 to the config register at startup,
+-- putting the ADT7420 into 16-bit continuous-conversion mode.
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity adt7420_reader_digikey is
+entity adt7420_reader is
     generic (
         CLOCK_FREQ_HZ : integer := 100_000_000;
         SENSOR_ADDR   : STD_LOGIC_VECTOR(6 downto 0) := "1001011"  -- Nexys A7: 0x4B
@@ -34,7 +34,7 @@ entity adt7420_reader_digikey is
     );
 end entity;
 
-architecture behavioral of adt7420_reader_digikey is
+architecture behavioral of adt7420_reader is
 
     component pmod_temp_sensor_adt7420 is
         generic (

@@ -1,7 +1,9 @@
-----------------------------------------------------------------------------------
-
-----------------------------------------------------------------------------------
-
+-- thermostat_top: Top-level entity for the FPGA I2C thermostatic driver.
+-- Instantiates the ADT7420 I2C sensor reader, a button-driven UI FSM for
+-- setpoint control (22.0 deg C default, 0.5 deg C steps, range 5.5-40.0 deg C),
+-- a 7-segment display combiner showing set and measured temperature, and a
+-- temperature regulator driving heat_en / cool_en outputs and an RGB LED.
+-- Reset is active-high (btnc); temperature is represented in tenths of a degree.
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -81,7 +83,7 @@ architecture Behavioral of thermostat_top is
         );
     end component ui_fsm;
 
-    component adt7420_reader_digikey is
+    component adt7420_reader is
         generic (
             CLOCK_FREQ_HZ : integer;
             SENSOR_ADDR   : STD_LOGIC_VECTOR(6 downto 0)
@@ -95,7 +97,7 @@ architecture Behavioral of thermostat_top is
             scl         : inout STD_LOGIC;
             sda         : inout STD_LOGIC
         );
-    end component adt7420_reader_digikey;
+    end component adt7420_reader;
     
     signal sig_display_data : std_logic_vector (31 downto 0); --xxxCxxxC
     signal sig_dp    : std_logic_vector(7 downto 0):= "10111011";  -- decimal points "10111011"
@@ -148,7 +150,7 @@ begin
     ------------------------------------------------------------------
     -- ADT7420 Temperature Sensor Reader Instantiation
     ------------------------------------------------------------------
-    sensor_reader : adt7420_reader_digikey
+    sensor_reader : adt7420_reader
         generic map (
             CLOCK_FREQ_HZ => 100_000_000,
             SENSOR_ADDR   => "1001011"            -- Nexys A7: A1=1, A0=1 -> 0x4B
