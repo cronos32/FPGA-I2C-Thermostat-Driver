@@ -37,20 +37,20 @@ begin
         curr_i := to_integer(current_temp);
 
         -- default
-        heat_en   <= '0';
-        cool_en   <= '0';
+        heat_en   <= '1';
+        cool_en   <= '1';
         led_red   <= '0';
         led_blue  <= '0';
         led_green <= '0';
 
         if curr_i < (set_i - HYST) then
             -- heating
-            heat_en <= '1';
+            heat_en <= '0';
             led_red <= '1';
 
         elsif curr_i > (set_i + HYST) then
             -- cooling
-            cool_en  <= '1';
+            cool_en  <= '0';
             led_blue <= '1';
 
         else

@@ -24,11 +24,8 @@ entity thermostat_top is
         led16_r : out STD_LOGIC;
         led16_g : out STD_LOGIC;
         led16_b : out STD_LOGIC;
-        led  : out STD_LOGIC_VECTOR (1 downto 0);
         TMP_SDA : inout STD_LOGIC;
         TMP_SCL : inout STD_LOGIC;
-        j_sda : inout STD_LOGIC;
-        j_scl : inout STD_LOGIC;
         heat_en : out STD_LOGIC;
         cool_en : out STD_LOGIC
     );
@@ -161,7 +158,7 @@ begin
             reset       => btnc,
             temperature => sig_temp_vector,
             temp_valid  => sig_temp_valid,
-            ack_error   => led(0),                -- ack_error from Larson's i2c_master
+            ack_error   => open,                -- ack_error from Larson's i2c_master
             scl         => TMP_SCL,
             sda         => TMP_SDA
         );
@@ -193,15 +190,8 @@ begin
         led_blue     => led16_b,
         led_green    => led16_g,
 
-        heat_en =>  heat_en,
-        cool_en =>  cool_en
+        heat_en => heat_en,
+        cool_en => cool_en
     );
-    
-    -- Debug header mirrors the real bus state using open-drain (tri-state)
-    -- semantics. Reading TMP_SDA/TMP_SCL at the top-level returns the actual
-    -- pin voltage (IOBUF input), so the logic analyzer on j_sda/j_scl sees
-    -- exactly what the sensor sees, including slave-driven ACK/data bits.
-    j_sda <= '0' when TMP_SDA = '0' else 'Z';
-    j_scl <= '0' when TMP_SCL = '0' else 'Z';
 
 end Behavioral;
