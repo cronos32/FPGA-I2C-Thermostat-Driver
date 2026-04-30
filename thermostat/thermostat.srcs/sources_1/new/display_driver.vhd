@@ -76,7 +76,7 @@ begin
     clock_0 : clk_en
         generic map ( G_MAX => 200_000 )  -- Adjust for flicker-free multiplexing
         port map (                   -- For simulation: 32
-            clk => clk,              -- For implementation: 3_200_000
+            clk => clk,              -- For implementation: 200_000
             rst => rst,
             ce  => sig_en
         );
