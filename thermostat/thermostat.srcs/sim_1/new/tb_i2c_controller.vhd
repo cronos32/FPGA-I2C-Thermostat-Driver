@@ -20,9 +20,9 @@ architecture behavioral of i2c_tb is
 	signal i2c_scl : STD_LOGIC;
 	signal i2c_sda : STD_LOGIC;
 begin
-	dut: entity work.i2c_controller port map (
-		clock => i2c_clock,
-		reset => i2c_reset,
+	dut: entity work.i2c_master port map (
+		clk => i2c_clock,
+		reset_n => i2c_reset,
 		trigger => i2c_trigger,
 		restart => i2c_restart,
 		last_byte => i2c_last_byte,
