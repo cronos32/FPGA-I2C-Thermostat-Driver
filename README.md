@@ -85,7 +85,7 @@ flowchart TD
         CE["clk_en\n10 Hz"]
         DBU["debounce\n(up)"]
         DBD["debounce\n(down)"]
-        FSM["setpoint register\n5.5 – 40.0 °C · step 0.5 °C"]
+        FSM["setpoint register\n5.0 – 40.0 °C · step 0.5 °C"]
     end
 
     %% ── Sensor subsystem ─────────────────────────────────────────
@@ -162,9 +162,9 @@ Top-level entity that wires all subsystems together. Instantiates the sensor rea
 
 Digi-Key / Scott Larson byte-level I²C master FSM. An internal clock divider generates `scl_clk` and `data_clk` from the system clock; the FSM advances on `data_clk` edges. Sequences through states `ready → start → command → slv_ack1 → [wr | rd] → [slv_ack2 | mstr_ack] → stop`. Supports continuous multi-byte transactions: when `ena` remains asserted after a byte completes, the master issues a repeated START or continues without a STOP condition. Open-drain operation via tri-state: `scl` and `sda` are driven `'0'` to pull low or released to `'Z'` for the pull-up to assert high. Operates at 400 kHz bus clock (configurable via generic). Imported unmodified from the Digi-Key EEWIKI.
 
-#### [`tb_i2c_controller`](thermostat/thermostat.srcs/sim_1/new/tb_i2c_controller.vhd)
+#### [`tb_i2c_master`](thermostat/thermostat.srcs/sim_1/new/tb_i2c_master.vhd)
 
-![tb_i2c_controller-img](img/tb_img/tb_i2c_controller.png)
+![tb_i2c_master.png](img/tb_img/tb_i2c_master.png)
 
 ---
 
@@ -172,6 +172,9 @@ Digi-Key / Scott Larson byte-level I²C master FSM. An internal clock divider ge
 
 Digi-Key / Scott Larson ADT7420 controller. Wraps `i2c_master` and orchestrates the full ADT7420 startup and continuous read sequence. On reset release, waits 100 ms for the sensor to power up, then writes `0x80` to the configuration register (address `0x03`) to select 16-bit continuous-conversion mode. After a 1.3 µs inter-transaction pause, it enters a continuous loop: issues a write+repeated-START+read sequence (`addr+W → ptr=0x00 → addr+R → read MSB → read LSB`) to fetch the 16-bit temperature register. The raw 16-bit ADC value (LSB = 1/128 °C in 16-bit mode) is placed on the `temperature` output after each completed read. Imported unmodified from the Digi-Key EEWIKI.
 
+#### [`tb_pmod`](thermostat/thermostat.srcs/sim_1/new/tb_pmod_temp_sensor_adt7420.vhd)
+
+![tb_pmod.png](img/tb_img/tb_pmod.png)
 ---
 
 ### [`adt7420_reader`](thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd)
@@ -218,7 +221,7 @@ Purely combinational BCD converter. Takes two 12-bit unsigned values (`set_temp`
 
 Time-multiplexed 8-digit 7-segment display driver. Uses `clk_en` (500 Hz tick, G_MAX = 200 000) and a 3-bit `counter` to cycle through the eight display positions. A combinational case statement selects the active 4-bit nibble from the 32-bit data word, passes it to `bin2seg` for segment decoding, and drives the corresponding anode low. Decimal-point output is taken directly from the matching bit of the `dp_en` mask.
 
-![Diagram of display driver](img/display_driver_schema.png)
+![Diagram of display driver](img/display_driver_diagram_final.png)
 
 #### [tb_display_driver](thermostat/thermostat.srcs/sim_1/new/tb_display_driver.vhd)
 
@@ -270,12 +273,12 @@ Generic N-bit synchronous up-counter with synchronous reset and clock-enable inp
 
 Post-synthesis results for target device **xc7a50ticsg324-1L** (Nexys A7-50T):
 
-| Resource | Utilization  | Available | Utilization % |
-|:---------|-------------:|----------:|--------------:|
-| LUT      |        1 702 |    32 600 |          5.22 |
-| FF       |          270 |    65 200 |          0.41 |
-| IO       |           27 |       210 |         12.86 |
-| BUFG     |            1 |        32 |          3.13 |
+| Resource             | Utilization  | Available | Utilization % |
+|:---------------------|-------------:|----------:|--------------:|
+| LUT (Look-Up Table)  |        1 702 |    32 600 |          5.22 |
+| FF (Flip-Flop)       |          270 |    65 200 |          0.41 |
+| IO (Input/Output)    |           27 |       210 |         12.86 |
+| BUFG (Global Buffer) |            1 |        32 |          3.13 |
 
 Post-implementation LUT count: **1 662** (5.10 %).
 
