@@ -175,6 +175,7 @@ Digi-Key / Scott Larson ADT7420 controller. Wraps `i2c_master` and orchestrates 
 #### [`tb_pmod`](thermostat/thermostat.srcs/sim_1/new/tb_pmod_temp_sensor_adt7420.vhd)
 
 ![tb_pmod.png](img/tb_img/tb_pmod.png)
+
 ---
 
 ### [`adt7420_reader`](thermostat/thermostat.srcs/sources_1/new/adt7420_reader.vhd)
@@ -284,7 +285,8 @@ Post-implementation LUT count: **1 662** (5.10 %).
 
 ## Demo video
 
-> *Link will be added after the Lab 5 demonstration.*
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/6Tb1_-8k97U/0.jpg)](https://www.youtube.com/watch?v=6Tb1_-8k97U)
+
 
 ## Tools used
 
