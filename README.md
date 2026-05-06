@@ -144,7 +144,7 @@ flowchart TD
 
 ### Diagram of final design
 
-![Diagram of final design](img/thermostat_top_schema_final.drawio.png)
+![Diagram of final design](img/thermostat_top_final.png)
 
 ## Module descriptions and simulations
 
